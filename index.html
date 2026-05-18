@@ -4,611 +4,509 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ICT Trading System — Account Dashboard</title>
-<meta name="description" content="Julian's ICT trading system — multi-account dashboard with phase-based sizing rules, trade logging, and CSV export.">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
-:root {
-  --bg:       #0b0f1a;
-  --s1:       #131825;
-  --s2:       #1a2030;
-  --s3:       #212840;
-  --b1:       rgba(255,255,255,.06);
-  --b2:       rgba(255,255,255,.11);
-  --b3:       rgba(255,255,255,.20);
-  --t1:       #dde4f0;
-  --t2:       #8b95a8;
-  --t3:       #4a5270;
-  --ok:       #34d399;
-  --bad:      #f87171;
-  --warn:     #fbbf24;
-  --info:     #60a5fa;
-  --font:     'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --mono:     'JetBrains Mono', 'Fira Code', monospace;
-  --r:        10px;
-  --rl:       14px;
+:root{
+  --bg:#0b0f1a;--s1:#131825;--s2:#1a2030;--s3:#212840;
+  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.22);
+  --t1:#dde4f0;--t2:#8b95a8;--t3:#4a5270;
+  --ok:#34d399;--bad:#f87171;--warn:#fbbf24;--info:#60a5fa;
+  --font:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'JetBrains Mono','Fira Code',monospace;
+  --r:10px;--rl:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;font-size:14px;line-height:1.5}
-
-/* ─── Header ─── */
-header{
-  background:var(--s1);border-bottom:1px solid var(--b2);
-  padding:0 1.5rem;height:54px;display:flex;align-items:center;
-  justify-content:space-between;position:sticky;top:0;z-index:200;
-}
+header{background:var(--s1);border-bottom:1px solid var(--b2);padding:0 1.5rem;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
 .logo{display:flex;align-items:center;gap:10px}
-.logo-icon{
-  width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#a78bfa,#60a5fa);
-  display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;flex-shrink:0;
-}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#a78bfa,#60a5fa);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;flex-shrink:0}
 .logo-name{font-size:14px;font-weight:500}
 .logo-sub{font-size:10px;color:var(--t2);margin-top:-1px}
 .header-r{display:flex;align-items:center;gap:16px}
-.amd-pill{
-  font-size:11px;font-weight:500;padding:3px 9px;border-radius:6px;
-  background:rgba(96,165,250,.12);color:#60a5fa;
-}
+.amd-pill{font-size:11px;font-weight:500;padding:3px 9px;border-radius:6px;background:rgba(96,165,250,.12);color:#60a5fa;transition:all .5s}
 .clock{font-size:12px;font-family:var(--mono);color:var(--t2)}
 .saved-lbl{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px}
 .saved-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);opacity:0;transition:opacity .3s}
 .saved-dot.lit{opacity:.8}
-
-/* ─── Layout ─── */
-.wrap{display:grid;grid-template-columns:215px minmax(0,1fr);height:calc(100vh - 54px)}
-
-/* ─── Sidebar ─── */
-.sidebar{
-  background:var(--s1);border-right:1px solid var(--b2);
-  padding:1.25rem 1rem;overflow-y:auto;display:flex;flex-direction:column;gap:0;
-}
-.sidebar-hdr{
-  font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;
-  letter-spacing:.1em;display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:10px;
-}
-.acct{
-  padding:10px 11px;border-radius:var(--r);cursor:pointer;
-  border:1px solid transparent;border-left-width:3px;margin-bottom:5px;
-  transition:background .1s;
-}
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);height:calc(100vh - 54px)}
+.sidebar{background:var(--s1);border-right:1px solid var(--b2);padding:1rem;overflow-y:auto;display:flex;flex-direction:column}
+.s-hdr{font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ov-btn{width:100%;padding:9px 11px;border-radius:var(--r);cursor:pointer;border:1px solid var(--b2);background:transparent;color:var(--t2);font-family:var(--font);font-size:12px;display:flex;align-items:center;gap:7px;margin-bottom:10px;transition:all .1s;text-align:left}
+.ov-btn:hover,.ov-btn.on{background:var(--s2);color:var(--t1);border-color:var(--b3)}
+.ov-btn.on{border-left:3px solid var(--info);padding-left:9px}
+.acct{padding:9px 11px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;border-left-width:3px;margin-bottom:4px;transition:background .1s}
 .acct:hover{background:var(--s2)}
 .acct.on{background:var(--s2);border-color:var(--b2);border-left-color:inherit}
-.acct-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
-.acct-name{
-  font-size:12px;font-weight:500;color:var(--t1);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:138px;
-}
-.acct-meta{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-top:4px;padding-left:13px;
-}
+.a-name{font-size:12px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:138px}
+.a-meta{display:flex;align-items:center;justify-content:space-between;margin-top:4px;padding-left:13px}
 .pbadge{font-size:10px;font-weight:500;padding:1px 7px;border-radius:5px}
 .apnl{font-size:11px;font-family:var(--mono)}
 .minip{height:2px;border-radius:2px;background:var(--b2);margin-top:5px;overflow:hidden}
 .minif{height:100%;border-radius:2px;transition:width .3s}
-.addbtn{
-  width:100%;padding:8px;font-size:12px;cursor:pointer;border-radius:var(--r);
-  border:1px dashed var(--b3);background:transparent;color:var(--t2);font-family:var(--font);
-  display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;
-  transition:all .12s;
-}
-.addbtn:hover{background:var(--s2);color:var(--t1)}
-
-/* ─── Content ─── */
+.add-btn{width:100%;padding:8px;font-size:12px;cursor:pointer;border-radius:var(--r);border:1px dashed var(--b3);background:transparent;color:var(--t2);font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;transition:all .12s}
+.add-btn:hover{background:var(--s2);color:var(--t1)}
 .content{overflow-y:auto;padding:1.5rem}
-
-/* ─── Cards ─── */
 .card{background:var(--s1);border:1px solid var(--b2);border-radius:var(--rl);padding:1rem 1.1rem}
 .card-top{border-top-width:2px}
 .metric{background:var(--s2);border-radius:var(--r);padding:.6rem .85rem}
-
-/* ─── Typography helpers ─── */
 .lbl{font-size:10px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
 .num{font-size:21px;font-weight:500;font-family:var(--mono);line-height:1.2}
-
-/* ─── Progress ─── */
 .prog{height:5px;background:var(--b2);border-radius:3px;overflow:hidden}
 .progf{height:100%;border-radius:3px;transition:width .4s cubic-bezier(.4,0,.2,1)}
-
-/* ─── Rule rows ─── */
 .rrow{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1);font-size:13px}
 .rrow:last-child{border-bottom:none}
-
-/* ─── Sizing pills ─── */
-.pill{
-  background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);
-  padding:7px 11px;font-size:12px;margin-bottom:5px;display:flex;align-items:center;gap:7px;
-}
-
-/* ─── Buttons ─── */
-.btn{
-  padding:7px 14px;font-size:13px;cursor:pointer;border-radius:var(--r);
-  border:1px solid var(--b3);background:transparent;color:var(--t1);font-family:var(--font);
-  display:inline-flex;align-items:center;gap:5px;transition:background .1s;
-}
+.stag{font-size:9px;font-weight:500;padding:1px 5px;border-radius:4px;margin-left:5px;vertical-align:middle}
+.stag.live{background:rgba(52,211,153,.15);color:var(--ok)}
+.stag.base{background:rgba(255,255,255,.07);color:var(--t3)}
+.pill{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:7px 11px;font-size:12px;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.stepper{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:7px 10px;flex:1}
+.s-lbl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.s-ctrl{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.s-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--b3);background:var(--s3);color:var(--t1);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background .1s;flex-shrink:0;font-family:var(--font);line-height:1}
+.s-btn:hover{background:var(--b3)}
+.s-val{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--t1);min-width:26px;text-align:center}
+.preset-btn{padding:3px 9px;font-size:11px;cursor:pointer;border-radius:6px;border:1px solid var(--b2);background:transparent;color:var(--t2);font-family:var(--font);transition:all .1s}
+.preset-btn:hover{background:var(--s3);color:var(--t1)}
+.exp-bar{background:var(--s2);border-radius:var(--r);padding:7px 10px;font-size:12px;color:var(--t2);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;font-size:13px;cursor:pointer;border-radius:var(--r);border:1px solid var(--b3);background:transparent;color:var(--t1);font-family:var(--font);display:inline-flex;align-items:center;gap:5px;transition:background .1s}
 .btn:hover{background:var(--s3)}
-.btn-xs{
-  padding:4px 9px;font-size:11px;cursor:pointer;border-radius:var(--r);
-  border:1px solid var(--b2);background:transparent;color:var(--t2);font-family:var(--font);
-  display:inline-flex;align-items:center;gap:4px;transition:background .1s;
-}
-.btn-xs:hover{background:var(--s3);color:var(--t1)}
-
-/* ─── Trade log ─── */
-.trow{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:5px 0;border-bottom:1px solid var(--b1);font-size:12px;
-}
+.xs{padding:4px 9px;font-size:11px;cursor:pointer;border-radius:var(--r);border:1px solid var(--b2);background:transparent;color:var(--t2);font-family:var(--font);display:inline-flex;align-items:center;gap:4px;transition:background .1s}
+.xs:hover{background:var(--s3);color:var(--t1)}
+.trow{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1);font-size:12px}
 .trow:last-child{border-bottom:none}
-
-/* ─── Forms ─── */
-input,select{
-  background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);
-  color:var(--t1);padding:7px 10px;font-family:var(--font);font-size:13px;outline:none;
-  transition:border-color .12s;
-}
+.ov-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.ov-tbl th{font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;padding:6px 10px;text-align:left;border-bottom:1px solid var(--b2)}
+.ov-tbl td{padding:8px 10px;border-bottom:1px solid var(--b1);vertical-align:middle}
+.ov-tbl tr:last-child td{border-bottom:none}
+.ov-tbl tr:hover td{background:var(--s2);cursor:pointer}
+input,select{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t1);padding:7px 10px;font-family:var(--font);font-size:13px;outline:none;transition:border-color .12s}
 input:focus,select:focus{border-color:var(--b3)}
 select option{background:var(--s2)}
-
-/* ─── Phase rules grid ─── */
 .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem}
-
-/* ─── Toast ─── */
-.toast{
-  position:fixed;bottom:24px;right:24px;background:var(--s1);border:1px solid var(--b2);
-  border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--t2);
-  display:flex;align-items:center;gap:8px;transform:translateY(80px);opacity:0;
-  transition:all .25s;z-index:999;
-}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--t2);display:flex;align-items:center;gap:8px;transform:translateY(80px);opacity:0;transition:all .25s;z-index:999}
 .toast.show{transform:translateY(0);opacity:1}
-
-/* ─── Scrollbar ─── */
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--b3);border-radius:3px}
-
-/* ─── Responsive ─── */
-@media(max-width:720px){
-  .wrap{grid-template-columns:1fr}
-  .sidebar{display:none}
-}
+@media(max-width:720px){.wrap{grid-template-columns:1fr}.sidebar{display:none}}
 </style>
 </head>
 <body>
-
 <header>
   <div class="logo">
     <div class="logo-icon"><i class="ti ti-chart-candle" aria-hidden="true"></i></div>
-    <div>
-      <div class="logo-name">ICT Trading System</div>
-      <div class="logo-sub">Account Dashboard — Julian's Rules</div>
-    </div>
+    <div><div class="logo-name">ICT Trading System</div><div class="logo-sub">Account Dashboard — Julian's Rules</div></div>
   </div>
   <div class="header-r">
-    <div class="amd-pill" id="amd-hdr">—</div>
-    <div class="clock" id="clock">—</div>
-    <div class="saved-lbl"><span class="saved-dot" id="saved-dot"></span>Saved</div>
+    <div class="amd-pill" id="amd">—</div>
+    <div class="clock" id="clk">—</div>
+    <div class="saved-lbl"><span class="saved-dot" id="dot"></span>Saved</div>
   </div>
 </header>
-
 <div class="wrap">
   <div class="sidebar">
-    <div class="sidebar-hdr">
-      <span>Accounts</span>
-      <span id="acnt" style="font-size:10px;color:var(--t3)">— / 10</span>
-    </div>
+    <div class="s-hdr"><span>Accounts</span><span id="acnt" style="font-size:10px;color:var(--t3)">—/10</span></div>
+    <button class="ov-btn" id="ovbtn" onclick="showOv()"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview &amp; statistics</button>
     <div id="alist"></div>
-    <button class="addbtn" id="addbtn" onclick="showAdd()">
-      <i class="ti ti-plus" aria-hidden="true"></i> Add account
-    </button>
+    <button class="add-btn" id="addbtn" onclick="showAdd()"><i class="ti ti-plus" aria-hidden="true"></i> Add account</button>
   </div>
-  <div class="content" id="panel">
-    <div style="padding:3rem;text-align:center;color:var(--t2)">
-      <i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:12px" aria-hidden="true"></i>
-      Loading your accounts&hellip;
-    </div>
-  </div>
+  <div class="content" id="panel"><div style="padding:3rem;text-align:center;color:var(--t2)"><i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:12px"></i>Loading&hellip;</div></div>
 </div>
-
-<div class="toast" id="toast">
-  <i class="ti ti-device-floppy" style="font-size:14px;color:var(--ok)" aria-hidden="true"></i>
-  Auto-saved
-</div>
+<div class="toast" id="toast"><i class="ti ti-device-floppy" style="font-size:14px;color:var(--ok)"></i>Auto-saved</div>
 
 <script>
-// ─── Phase palette (dark-optimised) ───────────────────────────
-const PC  = {caution:'#f87171', 1:'#a78bfa', 2:'#f59e0b', 3:'#34d399'};
-const PBG = {caution:'rgba(248,113,113,.13)', 1:'rgba(167,139,250,.13)', 2:'rgba(245,158,11,.13)', 3:'rgba(52,211,153,.13)'};
-const PTX = {caution:'#fca5a5', 1:'#c4b5fd', 2:'#fcd34d', 3:'#6ee7b7'};
-const DEFS = {
-  eval:   {balance:50000, profitTarget:3000,  maxDrawdown:2500,  dailyLimit:1500},
-  paper:  {balance:100000,profitTarget:28000, maxDrawdown:50000, dailyLimit:1500},
-  live:   {balance:10000, profitTarget:5000,  maxDrawdown:2000,  dailyLimit:500},
-  custom: {balance:50000, profitTarget:3000,  maxDrawdown:2500,  dailyLimit:1500},
-};
+const PC={caution:'#f87171',1:'#a78bfa',2:'#f59e0b',3:'#34d399'};
+const PBG={caution:'rgba(248,113,113,.13)',1:'rgba(167,139,250,.13)',2:'rgba(245,158,11,.13)',3:'rgba(52,211,153,.13)'};
+const PTX={caution:'#fca5a5',1:'#c4b5fd',2:'#fcd34d',3:'#6ee7b7'};
+const DEFS={eval:{balance:50000,profitTarget:3000,maxDrawdown:2500,dailyLimit:1500},paper:{balance:100000,profitTarget:28000,maxDrawdown:50000,dailyLimit:1500},live:{balance:10000,profitTarget:5000,maxDrawdown:2000,dailyLimit:500},custom:{balance:50000,profitTarget:3000,maxDrawdown:2500,dailyLimit:1500}};
 
-// ─── State ────────────────────────────────────────────────────
-let S = {
+let S={
   accounts:[
-    {id:1,name:'Eval #1 — Prop Firm',type:'eval',   balance:50000, profitTarget:3000, maxDrawdown:2500, dailyLimit:1500,totalPnl:0,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]},
-    {id:2,name:'Paper — $100K',       type:'paper',  balance:100000,profitTarget:28000,maxDrawdown:50000,dailyLimit:1500,totalPnl:-13000,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]},
+    {id:1,name:'Eval #1 — Prop Firm',type:'eval',balance:50000,profitTarget:3000,maxDrawdown:2500,dailyLimit:1500,totalPnl:0,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]},
+    {id:2,name:'Paper — $100K',type:'paper',balance:100000,profitTarget:28000,maxDrawdown:50000,dailyLimit:1500,totalPnl:-13000,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]},
   ],
-  sel:1, nextId:3, mode:'dash',
+  sel:1,nextId:3,mode:'dash',
+  entry:{mnq:2,nq:0},
   nw:{name:'',type:'eval',...DEFS.eval},
-  ed:null,
+  ed:null
 };
 
-// ─── Helpers ──────────────────────────────────────────────────
-const ga  = (id) => S.accounts.find(a => a.id === (id || S.sel));
-const fm  = (n)  => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString();
-const pp  = (a)  => Math.min(100, Math.max(0, Math.round((a.totalPnl / a.profitTarget) * 100)));
-const pl  = (p)  => p === 'caution' ? 'Warning' : 'Phase ' + p;
-const fc  = (n)  => n >= 0 ? 'var(--ok)' : 'var(--bad)';
-const esc = (s)  => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const ga=(id)=>S.accounts.find(a=>a.id===(id||S.sel));
+const fm=(n)=>(n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString();
+const fp=(n)=>(n*100).toFixed(1)+'%';
+const pp=(a)=>Math.min(100,Math.max(0,Math.round((a.totalPnl/a.profitTarget)*100)));
+const pl=(p)=>p==='caution'?'Warning':'Phase '+p;
+const fc=(n)=>n>=0?'var(--ok)':'var(--bad)';
+const esc=(s)=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 
-function gp(a) {
-  if (!a) return 1;
-  if (a.consecutiveLosses > 0) return 'caution';
-  if (a.tradingDays <= 3 || a.totalPnl < 750) return 1;
-  if (a.totalPnl >= a.profitTarget) return 3;
+function gp(a){
+  if(!a)return 1;
+  if(a.consecutiveLosses>0)return'caution';
+  if(a.tradingDays<=3||a.totalPnl<750)return 1;
+  if(a.totalPnl>=a.profitTarget)return 3;
   return 2;
 }
 
-// ─── Storage (localStorage) ───────────────────────────────────
+// Dynamic stats from actual trade history
+function calcStats(a){
+  const W=a.trades.filter(t=>t.win),L=a.trades.filter(t=>!t.win);
+  const nW=W.length,nL=L.length,nT=a.trades.length;
+  const sumW=W.reduce((s,t)=>s+Math.abs(t.pnl),0);
+  const sumL=L.reduce((s,t)=>s+Math.abs(t.pnl),0);
+  const avgW=nW?sumW/nW:250;
+  const avgL=nL?sumL/nL:60;
+  const wr=nT?nW/nT:null;
+  const beWR=avgL/(avgL+avgW);
+  const lToDD=a.maxDrawdown/avgL;
+  return{nW,nL,nT,avgW,avgL,wr,beWR,lToDD,isBase:nT<3};
+}
+
+// Contract helpers — MNQ $2/pt, NQ $20/pt; default 14pt stop
+function calcExp(mnq,nq,pts=14){return mnq*2*pts+nq*20*pts;}
+function conLabel(){const{mnq,nq}=S.entry;if(!mnq&&!nq)return'(none)';const p=[];if(mnq)p.push(mnq+' MNQ');if(nq)p.push(nq+' NQ');return p.join(' + ');}
+function phOK(p){const{mnq,nq}=S.entry;if(p==='caution')return mnq<=1&&nq===0;if(p===1)return mnq<=2&&nq===0;if(p===3)return nq===0;return true;}
+function adj(f,d){if(f==='mnq')S.entry.mnq=Math.max(0,Math.min(10,S.entry.mnq+d));else S.entry.nq=Math.max(0,Math.min(3,S.entry.nq+d));renderPanel();}
+function setPreset(m,n){S.entry.mnq=m;S.entry.nq=n;renderPanel();}
+
+// Storage
 let saveT;
-function save() {
-  clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    try {
-      localStorage.setItem('jtv3-a', JSON.stringify(S.accounts));
-      localStorage.setItem('jtv3-m', JSON.stringify({sel:S.sel, nextId:S.nextId}));
-      flashSaved();
-    } catch(e) {}
-  }, 500);
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('jtv3-a',JSON.stringify(S.accounts));localStorage.setItem('jtv3-m',JSON.stringify({sel:S.sel,nextId:S.nextId}));flash();}catch(e){}},500);}
+function load(){try{const a=localStorage.getItem('jtv3-a');if(a)S.accounts=JSON.parse(a);}catch(e){}try{const m=localStorage.getItem('jtv3-m');if(m){const d=JSON.parse(m);if(d.sel)S.sel=d.sel;if(d.nextId)S.nextId=d.nextId;}}catch(e){}if(!ga())S.sel=S.accounts[0]?.id||1;}
+let toastT;
+function flash(){const dot=document.getElementById('dot'),t=document.getElementById('toast');dot.classList.add('lit');t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{dot.classList.remove('lit');t.classList.remove('show');},2200);}
+
+// Clock + AMD
+function tick(){
+  const now=new Date();
+  document.getElementById('clk').textContent='NY '+new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);
+  const nyH=+new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hour12:false}).format(now);
+  const nyM=+new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',minute:'2-digit'}).format(now);
+  const hm=nyH*100+nyM;
+  let ph='Off-Hours',cl='rgba(255,255,255,.07)',tx='var(--t3)';
+  if(hm>=2000||hm<200){ph='Accumulation';cl='rgba(167,139,250,.12)';tx='#c4b5fd';}
+  else if(hm<830){ph='Manipulation';cl='rgba(245,158,11,.12)';tx='#fcd34d';}
+  else if(hm<1200){ph='Distribution — AM';cl='rgba(52,211,153,.12)';tx='#6ee7b7';}
+  else if(hm<1300){ph='Lunch — low prob';cl='rgba(248,113,113,.12)';tx='#fca5a5';}
+  else if(hm<1600){ph='Distribution — PM';cl='rgba(52,211,153,.12)';tx='#6ee7b7';}
+  const el=document.getElementById('amd');el.textContent=ph;el.style.background=cl;el.style.color=tx;
+}
+setInterval(tick,1000);tick();
+
+// CSV
+function exportCSV(){
+  const a=ga();if(!a?.trades.length){alert('No trades logged yet.');return;}
+  let run=0;
+  const rows=[['Trade','Date','Time','Account','Type','Result','Contracts','Phase','P&L ($)','Running Total ($)']];
+  a.trades.forEach((t,i)=>{run+=t.pnl;const dt=t.ts?new Date(t.ts):null;rows.push([i+1,dt?dt.toLocaleDateString():'',dt?dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'',`"${a.name}"`,a.type,t.win?'Win':'Loss',t.contracts,t.phase||'',t.pnl,run]);});
+  dl(rows,a.name.replace(/[^a-z0-9]/gi,'_'));
+}
+function exportAllCSV(){
+  const rows=[['Trade','Date','Time','Account','Type','Result','Contracts','Phase','P&L ($)','Account Running Total ($)']];
+  let any=false;
+  S.accounts.forEach(a=>{let run=0;a.trades.forEach((t,i)=>{any=true;run+=t.pnl;const dt=t.ts?new Date(t.ts):null;rows.push([i+1,dt?dt.toLocaleDateString():'',dt?dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'',`"${a.name}"`,a.type,t.win?'Win':'Loss',t.contracts,t.phase||'',t.pnl,run]);});});
+  if(!any){alert('No trades logged on any account.');return;}
+  dl(rows,'all_accounts');
+}
+function dl(rows,name){
+  const url=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  const lk=document.createElement('a');lk.href=url;lk.download=name+'_'+new Date().toISOString().split('T')[0]+'.csv';lk.click();URL.revokeObjectURL(url);
 }
 
-function load() {
-  try {
-    const a = localStorage.getItem('jtv3-a');
-    if (a) S.accounts = JSON.parse(a);
-    const m = localStorage.getItem('jtv3-m');
-    if (m) { const d = JSON.parse(m); if(d.sel) S.sel=d.sel; if(d.nextId) S.nextId=d.nextId; }
-  } catch(e) {}
-  if (!ga()) S.sel = S.accounts[0]?.id || 1;
-}
-
-function flashSaved() {
-  const dot = document.getElementById('saved-dot');
-  const t   = document.getElementById('toast');
-  dot.classList.add('lit');
-  t.classList.add('show');
-  setTimeout(() => { dot.classList.remove('lit'); t.classList.remove('show'); }, 2200);
-}
-
-// ─── Clock + AMD phase ────────────────────────────────────────
-function tick() {
-  const now  = new Date();
-  const nyFmt = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  document.getElementById('clock').textContent = 'NY ' + nyFmt.format(now);
-
-  const nyH = parseInt(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hour12:false}).format(now));
-  const nyM = parseInt(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',minute:'2-digit'}).format(now));
-  const hm  = nyH * 100 + nyM;
-  let phase='Off-Hours', clr='rgba(255,255,255,.07)', tx='var(--t3)';
-  if (hm>=2000||hm<200)    { phase='Accumulation';       clr='rgba(167,139,250,.12)'; tx='#c4b5fd'; }
-  else if (hm<830)         { phase='Manipulation';        clr='rgba(245,158,11,.12)';  tx='#fcd34d'; }
-  else if (hm<1200)        { phase='Distribution NY AM';  clr='rgba(52,211,153,.12)';  tx='#6ee7b7'; }
-  else if (hm<1300)        { phase='Lunch — low prob';    clr='rgba(248,113,113,.12)'; tx='#fca5a5'; }
-  else if (hm<1600)        { phase='Distribution NY PM';  clr='rgba(52,211,153,.12)';  tx='#6ee7b7'; }
-  const el = document.getElementById('amd-hdr');
-  el.textContent = phase; el.style.background = clr; el.style.color = tx;
-}
-setInterval(tick, 1000);
-tick();
-
-// ─── CSV Export ───────────────────────────────────────────────
-function exportCSV() {
-  const a = ga();
-  if (!a?.trades.length) { alert('No trades logged yet for this account.'); return; }
-  let run = 0;
-  const rows = [['Trade','Date','Time','Account','Type','Result','Contracts','Phase','P&L ($)','Running Total ($)']];
-  a.trades.forEach((t, i) => {
-    run += t.pnl;
-    const dt = t.ts ? new Date(t.ts) : null;
-    rows.push([
-      i+1,
-      dt ? dt.toLocaleDateString() : '',
-      dt ? dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '',
-      `"${a.name}"`, a.type,
-      t.win ? 'Win' : 'Loss',
-      t.contracts, t.phase||'', t.pnl, run,
-    ]);
-  });
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const lk  = document.createElement('a');
-  lk.href = url;
-  lk.download = a.name.replace(/[^a-z0-9]/gi,'_') + '_' + new Date().toISOString().split('T')[0] + '.csv';
-  lk.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── Sidebar ──────────────────────────────────────────────────
-function renderSidebar() {
-  document.getElementById('acnt').textContent = S.accounts.length + ' / 10';
-  document.getElementById('addbtn').style.display = S.accounts.length >= 10 ? 'none' : 'flex';
-  document.getElementById('alist').innerHTML = S.accounts.map(a => {
-    const p = gp(a); const on = a.id === S.sel;
-    return `<div class="acct${on?' on':''}" style="border-left-color:${PC[p]}" onclick="selAcct(${a.id})">
-      <div class="acct-row">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0">
-          <span style="width:7px;height:7px;border-radius:50%;background:${PC[p]};flex-shrink:0"></span>
-          <span class="acct-name">${esc(a.name)}</span>
-        </div>
-        <button onclick="event.stopPropagation();delAcct(${a.id})" aria-label="Remove ${esc(a.name)}" style="background:none;border:none;cursor:pointer;color:var(--t3);padding:0;line-height:1;font-size:14px;flex-shrink:0"><i class="ti ti-x" aria-hidden="true"></i></button>
+// Sidebar
+function renderSidebar(){
+  document.getElementById('acnt').textContent=S.accounts.length+'/10';
+  document.getElementById('addbtn').style.display=S.accounts.length>=10?'none':'flex';
+  document.getElementById('ovbtn').classList.toggle('on',S.mode==='ov');
+  document.getElementById('alist').innerHTML=S.accounts.map(a=>{
+    const p=gp(a);const on=a.id===S.sel&&S.mode!=='ov';
+    return`<div class="acct${on?' on':''}" style="border-left-color:${PC[p]}" onclick="selAcct(${a.id})">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="width:7px;height:7px;border-radius:50%;background:${PC[p]};flex-shrink:0"></span><span class="a-name">${esc(a.name)}</span></div>
+        <button onclick="event.stopPropagation();delAcct(${a.id})" aria-label="Remove" style="background:none;border:none;cursor:pointer;color:var(--t3);padding:0;font-size:14px"><i class="ti ti-x"></i></button>
       </div>
-      <div class="acct-meta">
-        <span class="pbadge" style="background:${PBG[p]};color:${PTX[p]}">${pl(p)}</span>
-        <span class="apnl" style="color:${fc(a.totalPnl)}">${fm(a.totalPnl)}</span>
-      </div>
+      <div class="a-meta"><span class="pbadge" style="background:${PBG[p]};color:${PTX[p]}">${pl(p)}</span><span class="apnl" style="color:${fc(a.totalPnl)}">${fm(a.totalPnl)}</span></div>
       <div style="padding-left:13px"><div class="minip"><div class="minif" style="width:${pp(a)}%;background:${PC[p]}"></div></div></div>
     </div>`;
   }).join('');
 }
 
-// ─── Form helper ──────────────────────────────────────────────
-function flds(pre, obj, tchange) {
-  const opts = ['eval','paper','live','custom'];
-  const olbl = {eval:'Eval — Prop Firm', paper:'Paper trading', live:'Live — AMP Futures', custom:'Custom'};
-  return `<div style="display:grid;gap:11px">
-    <div>
-      <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Account name</label>
-      <input type="text" value="${esc(obj.name)}" oninput="${pre}.name=this.value" style="width:100%" placeholder="e.g. Eval #2 — Apex">
+// P&L sparkline chart
+function renderChart(accs){
+  const actives=accs.filter(a=>a.trades.length>1);
+  if(!actives.length)return`<div style="text-align:center;color:var(--t3);padding:2rem;font-size:12px">Log at least 2 trades on any account to see the P&L chart</div>`;
+  const W=600,H=160,PX=44,PY=18;
+  const series=actives.map(a=>{let r=0;return{name:a.name,color:PC[gp(a)],pts:a.trades.map((t,i)=>{r+=t.pnl;return{x:i,y:r};})};});
+  const maxN=Math.max(...series.map(s=>s.pts.length))-1||1;
+  const allY=series.flatMap(s=>s.pts.map(p=>p.y));
+  const minY=Math.min(...allY,0),maxY=Math.max(...allY,0);
+  const rY=maxY-minY||100;
+  const IW=W-2*PX,IH=H-2*PY;
+  const sx=n=>PX+(n/maxN)*IW,sy=v=>H-PY-((v-minY)/rY)*IH;
+  const z=sy(0);
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible">`;
+  svg+=`<line x1="${PX}" y1="${z}" x2="${W-PX}" y2="${z}" stroke="rgba(255,255,255,.1)" stroke-dasharray="4,3"/>`;
+  svg+=`<text x="${PX-5}" y="${z+4}" font-size="9" fill="rgba(255,255,255,.25)" text-anchor="end" font-family="DM Sans,sans-serif">$0</text>`;
+  series.forEach(s=>{
+    const d=s.pts.map((p,i)=>`${i?'L':'M'}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join('');
+    svg+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    const lp=s.pts[s.pts.length-1];
+    const lx=sx(lp.x),ly=sy(lp.y);
+    svg+=`<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.5" fill="${s.color}"/>`;
+    const anc=lx>W-100?'end':'start';
+    svg+=`<text x="${(lx+(anc==='end'?-8:8)).toFixed(1)}" y="${(ly+4).toFixed(1)}" font-size="9.5" fill="${s.color}" text-anchor="${anc}" font-family="DM Sans,sans-serif">${esc(s.name.split('—')[0].trim())}</text>`;
+  });
+  svg+=`</svg>`;
+  return svg;
+}
+
+// Overview
+function showOv(){S.mode='ov';render();}
+function selAcct(id){S.sel=id;S.mode='dash';render();}
+function delAcct(id){if(S.accounts.length<=1)return;S.accounts=S.accounts.filter(a=>a.id!==id);if(S.sel===id)S.sel=S.accounts[0].id;save();render();}
+
+function renderOv(){
+  const all=S.accounts;
+  const totPnl=all.reduce((s,a)=>s+a.totalPnl,0);
+  const totDay=all.reduce((s,a)=>s+a.dailyPnl,0);
+  const allT=all.flatMap(a=>a.trades);
+  const nT=allT.length,nW=allT.filter(t=>t.win).length;
+  const wr=nT?nW/nT:null;
+  const p2=all.filter(a=>{const p=gp(a);return p===2||p===3;}).length;
+
+  return`
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1rem">
+    <div class="metric"><div class="lbl">Combined P&L</div><div class="num" style="color:${fc(totPnl)}">${fm(totPnl)}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Today: <span style="color:${fc(totDay)}">${fm(totDay)}</span></div></div>
+    <div class="metric"><div class="lbl">Total trades</div><div class="num">${nT}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">${nW}W &nbsp;/&nbsp; ${nT-nW}L</div></div>
+    <div class="metric"><div class="lbl">Overall win rate</div><div class="num">${wr!==null?fp(wr):'—'}</div><div style="font-size:11px;color:var(--t2);margin-top:2px">Target: 60.0%</div></div>
+    <div class="metric"><div class="lbl">At phase 2+</div><div class="num">${p2}<span style="font-size:14px;color:var(--t2)"> / ${all.length}</span></div><div style="font-size:11px;color:var(--t2);margin-top:2px">scaled up</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="lbl" style="margin:0;display:flex;align-items:center;gap:4px"><i class="ti ti-chart-line"></i> Running P&L — all accounts</div>
+      <button onclick="exportAllCSV()" class="xs"><i class="ti ti-file-spreadsheet"></i> Export all to CSV</button>
     </div>
-    <div>
-      <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Account type</label>
-      <select onchange="${tchange}(this.value)" style="width:100%">
-        ${opts.map(t=>`<option value="${t}"${obj.type===t?' selected':''}>${olbl[t]}</option>`).join('')}
-      </select>
+    <div style="overflow-x:auto">${renderChart(all)}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">
+      ${all.map(a=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)"><span style="width:10px;height:2px;border-radius:1px;background:${PC[gp(a)]};display:inline-block"></span>${esc(a.name)}</div>`).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Balance ($)</label>
-        <input type="number" value="${obj.balance}" oninput="${pre}.balance=+this.value" style="width:100%"></div>
-      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Profit target ($)</label>
-        <input type="number" value="${obj.profitTarget}" oninput="${pre}.profitTarget=+this.value" style="width:100%"></div>
-      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Max drawdown ($)</label>
-        <input type="number" value="${obj.maxDrawdown}" oninput="${pre}.maxDrawdown=+this.value" style="width:100%"></div>
-      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Daily P&L limit ($)</label>
-        <input type="number" value="${obj.dailyLimit}" oninput="${pre}.dailyLimit=+this.value" style="width:100%"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem">
+    <div class="lbl" style="margin-bottom:12px;display:flex;align-items:center;gap:4px"><i class="ti ti-table"></i> Account comparison</div>
+    <div style="overflow-x:auto">
+    <table class="ov-tbl">
+      <thead><tr><th>Account</th><th>Phase</th><th>P&L</th><th>Daily</th><th>Trades</th><th>Win rate</th><th>Avg win</th><th>Avg loss</th><th>Break-even</th><th>To target</th><th>Progress</th></tr></thead>
+      <tbody>
+      ${all.map(a=>{
+        const p=gp(a);const st=calcStats(a);
+        const wrStr=st.wr!==null?`<span style="color:${st.wr>=st.beWR?'var(--ok)':'var(--bad)'}">${fp(st.wr)}</span>`:'—';
+        const tag=st.isBase?'<span style="font-size:9px;color:var(--t3)"> base</span>':'';
+        return`<tr onclick="selAcct(${a.id})">
+          <td><div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:${PC[p]};flex-shrink:0"></span><strong style="font-size:12px">${esc(a.name)}</strong></div></td>
+          <td><span class="pbadge" style="background:${PBG[p]};color:${PTX[p]}">${pl(p)}</span></td>
+          <td style="font-family:var(--mono);color:${fc(a.totalPnl)}">${fm(a.totalPnl)}</td>
+          <td style="font-family:var(--mono);color:${fc(a.dailyPnl)}">${fm(a.dailyPnl)}</td>
+          <td style="color:var(--t2)">${st.nT}</td>
+          <td style="font-family:var(--mono)">${wrStr}</td>
+          <td style="font-family:var(--mono);color:var(--ok)">${fm(st.avgW)}${tag}</td>
+          <td style="font-family:var(--mono);color:var(--bad)">${fm(st.avgL)}${tag}</td>
+          <td style="font-family:var(--mono);color:var(--t2)">${fp(st.beWR)}</td>
+          <td style="font-family:var(--mono);color:var(--t2)">${fm(Math.max(0,a.profitTarget-a.totalPnl))}</td>
+          <td style="min-width:90px"><div style="display:flex;align-items:center;gap:6px"><div class="prog" style="flex:1"><div class="progf" style="width:${pp(a)}%;background:${PC[p]}"></div></div><span style="font-size:10px;color:var(--t3);font-family:var(--mono)">${pp(a)}%</span></div></td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-calculator"></i> Per-account risk math</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:.75rem">
+      ${all.map(a=>{
+        const p=gp(a);const st=calcStats(a);
+        return`<div style="background:var(--s2);border-radius:var(--r);padding:.75rem .85rem">
+          <div style="font-size:10px;font-weight:500;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:5px"><span style="width:5px;height:5px;border-radius:50%;background:${PC[p]};flex-shrink:0"></span>${esc(a.name.split('—')[0].trim())}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <div><div style="font-size:9px;color:var(--t3)">Avg win</div><div style="font-size:14px;font-family:var(--mono);color:var(--ok)">${fm(st.avgW)}</div></div>
+            <div><div style="font-size:9px;color:var(--t3)">Avg loss</div><div style="font-size:14px;font-family:var(--mono);color:var(--bad)">${fm(st.avgL)}</div></div>
+            <div><div style="font-size:9px;color:var(--t3)">Win rate</div><div style="font-size:14px;font-family:var(--mono);color:${st.wr!==null&&st.wr>=st.beWR?'var(--ok)':'var(--t2)'}">${st.wr!==null?fp(st.wr):'—'}</div></div>
+            <div><div style="font-size:9px;color:var(--t3)">Break-even</div><div style="font-size:14px;font-family:var(--mono)">${fp(st.beWR)}</div></div>
+            <div><div style="font-size:9px;color:var(--t3)">Loss to DD</div><div style="font-size:14px;font-family:var(--mono)">${Math.floor(st.lToDD)}</div></div>
+            <div><div style="font-size:9px;color:var(--t3)">Trades</div><div style="font-size:14px;font-family:var(--mono)">${st.nT}</div></div>
+          </div>
+          <div style="font-size:9px;color:var(--t3)">${st.isBase?'Baseline — log 3+ trades for actuals':'Live calculations from logged trades'}</div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
 
-// ─── Add / Edit account ───────────────────────────────────────
-function showAdd()     { S.mode='add'; S.nw={name:'',type:'eval',...DEFS.eval}; renderPanel(); }
-function cancelAdd()   { S.mode='dash'; renderPanel(); }
-function setNewType(v) { Object.assign(S.nw, DEFS[v]||DEFS.custom, {type:v, name:S.nw.name}); renderPanel(); }
-function createAcct()  {
-  if (!S.nw.name.trim()) { alert('Please enter an account name.'); return; }
-  const a = {id:S.nextId++, ...S.nw, name:S.nw.name.trim(), totalPnl:0, dailyPnl:0, tradingDays:1, consecutiveLosses:0, trades:[]};
-  S.accounts.push(a); S.sel=a.id; S.mode='dash'; save(); render();
+// Forms
+function flds(pre,obj,tc){
+  const opts=['eval','paper','live','custom'];
+  const ol={eval:'Eval — Prop Firm',paper:'Paper trading',live:'Live — AMP Futures',custom:'Custom'};
+  return`<div style="display:grid;gap:11px">
+    <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Account name</label><input type="text" value="${esc(obj.name)}" oninput="${pre}.name=this.value" style="width:100%" placeholder="e.g. Eval #2 — Apex"></div>
+    <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Account type</label><select onchange="${tc}(this.value)" style="width:100%">${opts.map(t=>`<option value="${t}"${obj.type===t?' selected':''}>${ol[t]}</option>`).join('')}</select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Balance ($)</label><input type="number" value="${obj.balance}" oninput="${pre}.balance=+this.value" style="width:100%"></div>
+      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Profit target ($)</label><input type="number" value="${obj.profitTarget}" oninput="${pre}.profitTarget=+this.value" style="width:100%"></div>
+      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Max drawdown ($)</label><input type="number" value="${obj.maxDrawdown}" oninput="${pre}.maxDrawdown=+this.value" style="width:100%"></div>
+      <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Daily P&L limit ($)</label><input type="number" value="${obj.dailyLimit}" oninput="${pre}.dailyLimit=+this.value" style="width:100%"></div>
+    </div>
+  </div>`;
 }
-function showEdit()    {
-  const a=ga(); if(!a) return;
-  S.ed = {id:a.id, name:a.name, type:a.type, balance:a.balance, profitTarget:a.profitTarget, maxDrawdown:a.maxDrawdown, dailyLimit:a.dailyLimit};
-  S.mode='edit'; renderPanel();
+function showAdd(){S.mode='add';S.nw={name:'',type:'eval',...DEFS.eval};renderPanel();}
+function cancelAdd(){S.mode='dash';renderPanel();}
+function setNewType(v){Object.assign(S.nw,DEFS[v]||DEFS.custom,{type:v,name:S.nw.name});renderPanel();}
+function createAcct(){if(!S.nw.name.trim()){alert('Please enter an account name.');return;}const a={id:S.nextId++,...S.nw,name:S.nw.name.trim(),totalPnl:0,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]};S.accounts.push(a);S.sel=a.id;S.mode='dash';save();render();}
+function showEdit(){const a=ga();if(!a)return;S.ed={id:a.id,name:a.name,type:a.type,balance:a.balance,profitTarget:a.profitTarget,maxDrawdown:a.maxDrawdown,dailyLimit:a.dailyLimit};S.mode='edit';renderPanel();}
+function cancelEdit(){S.mode='dash';renderPanel();}
+function setEditType(v){Object.assign(S.ed,DEFS[v]||DEFS.custom,{type:v,id:S.ed.id,name:S.ed.name});renderPanel();}
+function saveEdit(){const a=ga(S.ed.id);if(!a)return;Object.assign(a,{name:S.ed.name||a.name,type:S.ed.type,balance:S.ed.balance,profitTarget:S.ed.profitTarget,maxDrawdown:S.ed.maxDrawdown,dailyLimit:S.ed.dailyLimit});S.mode='dash';save();render();}
+
+function addTrade(){
+  const a=ga();if(!a)return;
+  const res=document.getElementById('tr').value;
+  const raw=parseFloat(document.getElementById('tp').value);
+  if(isNaN(raw)||raw<=0)return;
+  const pnl=res==='win'?Math.round(raw):-Math.round(raw);
+  a.trades.push({win:res==='win',pnl,contracts:conLabel(),ts:Date.now(),phase:pl(gp(a))});
+  a.dailyPnl=Math.round(a.dailyPnl+pnl);
+  a.totalPnl=Math.round(a.totalPnl+pnl);
+  a.consecutiveLosses=res==='loss'?a.consecutiveLosses+1:0;
+  document.getElementById('tp').value='';
+  save();render();
 }
-function cancelEdit()   { S.mode='dash'; renderPanel(); }
-function setEditType(v) { Object.assign(S.ed, DEFS[v]||DEFS.custom, {type:v, id:S.ed.id, name:S.ed.name}); renderPanel(); }
-function saveEdit()     {
-  const a=ga(S.ed.id); if(!a) return;
-  Object.assign(a, {name:S.ed.name||a.name, type:S.ed.type, balance:S.ed.balance, profitTarget:S.ed.profitTarget, maxDrawdown:S.ed.maxDrawdown, dailyLimit:S.ed.dailyLimit});
-  S.mode='dash'; save(); render();
-}
-function selAcct(id) { S.sel=id; S.mode='dash'; render(); }
-function delAcct(id) {
-  if (S.accounts.length <= 1) return;
-  S.accounts = S.accounts.filter(a=>a.id!==id);
-  if (S.sel===id) S.sel=S.accounts[0].id;
-  save(); render();
-}
+function nextDay(){const a=ga();if(!a)return;a.tradingDays++;a.dailyPnl=0;a.consecutiveLosses=0;save();render();}
+function resetAcct(){const a=ga();if(!a)return;if(!confirm('Reset all trades and P&L for "'+a.name+'"?'))return;Object.assign(a,{totalPnl:0,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]});save();render();}
 
-// ─── Trade actions ────────────────────────────────────────────
-function addTrade() {
-  const a=ga(); if(!a) return;
-  const res = document.getElementById('tr').value;
-  const raw = parseFloat(document.getElementById('tp').value);
-  const con = document.getElementById('tc').value;
-  if (isNaN(raw) || raw <= 0) return;
-  const pnl = res==='win' ? Math.round(raw) : -Math.round(raw);
-  a.trades.push({win:res==='win', pnl, contracts:con, ts:Date.now(), phase:pl(gp(a))});
-  a.dailyPnl  = Math.round(a.dailyPnl  + pnl);
-  a.totalPnl  = Math.round(a.totalPnl  + pnl);
-  a.consecutiveLosses = res==='loss' ? a.consecutiveLosses + 1 : 0;
-  document.getElementById('tp').value = '';
-  save(); render();
-}
-function nextDay()  { const a=ga(); if(!a) return; a.tradingDays++; a.dailyPnl=0; a.consecutiveLosses=0; save(); render(); }
-function resetAcct(){ const a=ga(); if(!a) return; if(!confirm('Reset all trades and P&L for "'+a.name+'"?')) return; Object.assign(a,{totalPnl:0,dailyPnl:0,tradingDays:1,consecutiveLosses:0,trades:[]}); save(); render(); }
+function renderDash(a){
+  const p=gp(a),st=calcStats(a);
+  const dr=Math.max(0,a.dailyLimit-a.dailyPnl);
+  const rem=Math.max(0,a.profitTarget-a.totalPnl);
+  const exp=calcExp(S.entry.mnq,S.entry.nq);
+  const ok=phOK(p);
+  const{mnq,nq}=S.entry;
 
-// ─── Dashboard HTML ───────────────────────────────────────────
-function renderDash(a) {
-  const p   = gp(a);
-  const dr  = Math.max(0, a.dailyLimit  - a.dailyPnl);
-  const rem = Math.max(0, a.profitTarget - a.totalPnl);
+  const ptitle={caution:'Consistency rule active',1:'Phase 1 — prove it',2:'Phase 2 — scale up',3:'Phase 3 — protect the gains'};
+  const psub={caution:'1 micro only on next trade.',1:'Micros only. Days 1–3 or under $750 profit.',2:"You've earned the e-mini. Stay disciplined.",3:'Pull back to micros. Preserve your target.'};
+  const pnext={caution:'Win your next trade first',1:'Day 4+ and $750 profit',2:'$'+a.profitTarget.toLocaleString()+' total profit',3:'Hit target — pass eval'};
+  const smain={caution:'1 MNQ micro only',1:'2 MNQ micros',2:'2 MNQ + 1 NQ e-mini',3:'2–4 MNQ micros only'};
+  const snote={caution:'Consistency rule: 1 micro next, no e-minis until you win.',1:'No e-minis until day 4+ and $750 profit.',2:'Or scale to 3–4 micros instead. Your call.',3:"Pull back. Don't add e-minis. Protect the gain."};
 
-  const ptitle = {caution:'Consistency rule active', 1:'Phase 1 — prove it', 2:'Phase 2 — scale up', 3:'Phase 3 — protect the gains'};
-  const psub   = {caution:'Trade 1 micro only on your next trade — you had a loss.', 1:'Micros only. Days 1–3 or under $750 profit.', 2:"You've earned the e-mini. Stay disciplined.", 3:'Pull back to micros. Preserve your target.'};
-  const pnext  = {caution:'Win your next trade first', 1:'Day 4+ and $750 profit', 2:'$'+a.profitTarget.toLocaleString()+' total profit', 3:'Hit target — pass eval'};
-  const smain  = {caution:'1 MNQ micro only', 1:'2 MNQ micros', 2:'2 MNQ + 1 NQ e-mini', 3:'2–4 MNQ micros only'};
-  const snote  = {caution:'Consistency rule: 1 micro next, no e-minis until you win.', 1:'No e-minis until day 4+ and $750 profit.', 2:'Or scale to 3–4 micros instead. Your call.', 3:"Pull back. Don't add e-minis. Protect the gain."};
+  const tlog=!a.trades.length
+    ?`<div style="color:var(--t3);text-align:center;padding:.75rem 0;font-size:12px">No trades logged yet</div>`
+    :a.trades.slice().reverse().slice(0,15).map(t=>{const dt=t.ts?new Date(t.ts):null;return`<div class="trow"><div style="display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:${t.win?'var(--ok)':'var(--bad)'};display:inline-block;flex-shrink:0"></span><span style="color:var(--t2);font-size:11px">${esc(t.contracts)}</span>${dt?`<span style="color:var(--t3);font-size:10px">${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`:''}</div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:10px;color:var(--t3)">${esc(t.phase||'')}</span><span style="font-family:var(--mono);font-weight:500;font-size:12px;color:${t.pnl>=0?'var(--ok)':'var(--bad)'}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl)}</span></div></div>`;}).join('');
 
-  const tlog = !a.trades.length
-    ? `<div style="color:var(--t3);text-align:center;padding:.75rem 0;font-size:12px">No trades logged yet</div>`
-    : a.trades.slice().reverse().slice(0,15).map(t => {
-        const dt = t.ts ? new Date(t.ts) : null;
-        return `<div class="trow">
-          <div style="display:flex;align-items:center;gap:7px">
-            <span style="width:6px;height:6px;border-radius:50%;background:${t.win?'var(--ok)':'var(--bad)'};display:inline-block;flex-shrink:0"></span>
-            <span style="color:var(--t2);font-size:11px">${esc(t.contracts)}</span>
-            ${dt?`<span style="color:var(--t3);font-size:10px">${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`:''}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:10px;color:var(--t3)">${esc(t.phase||'')}</span>
-            <span style="font-family:var(--mono);font-weight:500;font-size:12px;color:${t.pnl>=0?'var(--ok)':'var(--bad)'}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl)}</span>
-          </div>
-        </div>`;
-      }).join('');
+  const presets=[[2,0],[4,0],[6,0],[8,0],[2,1],[4,1],[2,2],[0,1],[0,2]];
 
-  return `
+  return`
   <div class="card card-top" style="margin-bottom:1rem;border-top-color:${PC[p]}">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:.85rem">
-      <div>
-        <div class="lbl">${esc(a.name)} &middot; Day ${a.tradingDays}</div>
-        <div style="font-size:19px;font-weight:500;color:var(--t1);margin-top:3px">${ptitle[p]}</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px">${psub[p]}</div>
-      </div>
+      <div><div class="lbl">${esc(a.name)} &middot; Day ${a.tradingDays}</div><div style="font-size:19px;font-weight:500;margin-top:3px">${ptitle[p]}</div><div style="font-size:12px;color:var(--t2);margin-top:3px">${psub[p]}</div></div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
-        <div style="text-align:right">
-          <span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;background:${PBG[p]};color:${PTX[p]}">${pl(p)}</span>
-          <div style="font-size:11px;color:var(--t2);margin-top:5px">Next: <strong style="color:var(--t1)">${pnext[p]}</strong></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <button onclick="showEdit()" class="btn-xs"><i class="ti ti-pencil" aria-hidden="true"></i> Edit account</button>
-          <button onclick="nextDay()"  class="btn-xs"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Next day</button>
-          <button onclick="resetAcct()" class="btn-xs" style="color:var(--bad)"><i class="ti ti-refresh" aria-hidden="true"></i> Reset</button>
-        </div>
+        <div style="text-align:right"><span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;background:${PBG[p]};color:${PTX[p]}">${pl(p)}</span><div style="font-size:11px;color:var(--t2);margin-top:5px">Next: <strong style="color:var(--t1)">${pnext[p]}</strong></div></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><button onclick="showEdit()" class="xs"><i class="ti ti-pencil"></i> Edit</button><button onclick="nextDay()" class="xs"><i class="ti ti-calendar-plus"></i> Next day</button><button onclick="resetAcct()" class="xs" style="color:var(--bad)"><i class="ti ti-refresh"></i> Reset</button></div>
       </div>
     </div>
-    <div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:5px">
-        <span>$0</span>
-        <span style="font-family:var(--mono)">${fm(a.totalPnl)} of $${a.profitTarget.toLocaleString()}</span>
-        <span>$${a.profitTarget.toLocaleString()}</span>
-      </div>
-      <div class="prog"><div class="progf" style="width:${pp(a)}%;background:${PC[p]}"></div></div>
-    </div>
+    <div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:5px"><span>$0</span><span style="font-family:var(--mono)">${fm(a.totalPnl)} of $${a.profitTarget.toLocaleString()}</span><span>$${a.profitTarget.toLocaleString()}</span></div><div class="prog"><div class="progf" style="width:${pp(a)}%;background:${PC[p]}"></div></div></div>
   </div>
 
   <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem">
-
     <div class="card">
-      <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-chart-line" aria-hidden="true"></i> Session</div>
+      <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-chart-line"></i> Session</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:1rem">
         <div class="metric"><div class="lbl">Daily P&L</div><div class="num" style="color:${fc(a.dailyPnl)}">${fm(a.dailyPnl)}</div></div>
         <div class="metric"><div class="lbl">Total P&L</div><div class="num" style="color:${fc(a.totalPnl)}">${fm(a.totalPnl)}</div></div>
         <div class="metric"><div class="lbl">To target</div><div class="num">${fm(rem)}</div></div>
         <div class="metric"><div class="lbl">Daily limit left</div><div class="num" style="color:${dr<=0?'var(--bad)':'var(--t1)'}">${dr<=0?'STOP':fm(dr)}</div></div>
       </div>
+
       <div style="border-top:1px solid var(--b1);padding-top:.85rem;margin-bottom:.85rem">
         <div class="lbl" style="margin-bottom:8px">Log a trade</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:6px">
-          <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:3px">Result</label>
-            <select id="tr" style="width:100%"><option value="win">Win</option><option value="loss">Loss</option></select></div>
-          <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:3px">P&L ($)</label>
-            <input type="number" id="tp" placeholder="e.g. 250" style="width:100%"></div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <div class="stepper"><div class="s-lbl">MNQ micros</div><div class="s-ctrl"><button class="s-btn" onclick="adj('mnq',-1)">−</button><span class="s-val">${mnq}</span><button class="s-btn" onclick="adj('mnq',1)">+</button></div></div>
+          <div class="stepper"><div class="s-lbl">NQ e-minis</div><div class="s-ctrl"><button class="s-btn" onclick="adj('nq',-1)">−</button><span class="s-val">${nq}</span><button class="s-btn" onclick="adj('nq',1)">+</button></div></div>
         </div>
-        <div style="margin-bottom:7px"><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:3px">Contracts</label>
-          <select id="tc" style="width:100%">
-            <option>1 MNQ</option><option selected>2 MNQ</option><option>3 MNQ</option>
-            <option>4 MNQ</option><option>2 MNQ + 1 NQ</option><option>1 NQ</option>
-          </select></div>
-        <button onclick="addTrade()" class="btn" style="width:100%;justify-content:center;font-weight:500">
-          <i class="ti ti-plus" aria-hidden="true"></i> Log trade
-        </button>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">
+          ${presets.map(([m,n])=>`<button class="preset-btn" onclick="setPreset(${m},${n})">${m&&n?m+'M+'+n+'N':m?m+' MNQ':n+' NQ'}</button>`).join('')}
+        </div>
+        <div class="exp-bar">
+          <span>Selected: <strong style="color:var(--t1)">${conLabel()||'none'}</strong></span>
+          ${exp>0?`<span>14pt stop: <strong style="font-family:var(--mono);color:${ok?'var(--ok)':'var(--warn)'}">$${exp.toLocaleString()}</strong> <span style="font-size:10px;color:${ok?'var(--ok)':'var(--warn)'}">${ok?'✓ phase OK':'⚠ over limit'}</span></span>`:''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:6px">
+          <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:3px">Result</label><select id="tr" style="width:100%"><option value="win">Win</option><option value="loss">Loss</option></select></div>
+          <div><label style="font-size:11px;color:var(--t2);display:block;margin-bottom:3px">P&L ($)</label><input type="number" id="tp" placeholder="e.g. 250" style="width:100%"></div>
+        </div>
+        <button onclick="addTrade()" class="btn" style="width:100%;justify-content:center;font-weight:500"><i class="ti ti-plus"></i> Log trade</button>
       </div>
+
       <div class="lbl" style="margin-bottom:6px">Trade log <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--t3)">(${a.trades.length} total)</span></div>
-      <div style="max-height:200px;overflow-y:auto">${tlog}</div>
+      <div style="max-height:190px;overflow-y:auto">${tlog}</div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:1rem">
       <div class="card">
-        <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i> Trade this right now</div>
-        <div style="font-size:20px;font-weight:500;color:var(--t1);margin-bottom:4px">${smain[p]}</div>
+        <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-adjustments-horizontal"></i> Trade this right now</div>
+        <div style="font-size:20px;font-weight:500;margin-bottom:4px">${smain[p]}</div>
         <div style="font-size:12px;color:var(--t2);margin-bottom:.85rem;line-height:1.6">${snote[p]}</div>
-        <div class="pill"><i class="ti ti-check" style="color:var(--ok);font-size:13px" aria-hidden="true"></i> 2 MNQ (default)</div>
-        <div class="pill" style="opacity:${p===2?1:.2}">
-          <i class="ti ti-${p===2?'check':'lock'}" style="font-size:13px;color:${p===2?'var(--ok)':'var(--t3)'}" aria-hidden="true"></i>
-          ${p===2?'Add 1 NQ e-mini (phase 2 unlocked)':'Add e-mini — unlocks at phase 2'}
-        </div>
-        <div class="pill" style="opacity:${p===2?1:.2}">
-          <i class="ti ti-${p===2?'check':'lock'}" style="font-size:13px;color:${p===2?'var(--ok)':'var(--t3)'}" aria-hidden="true"></i>
-          ${p===2?'3–4 MNQ instead (phase 2)':'3–4 MNQ — unlocks at phase 2'}
-        </div>
+        <div class="pill"><i class="ti ti-check" style="color:var(--ok);font-size:13px"></i> 2 MNQ (phase 1 default)</div>
+        <div class="pill" style="opacity:${p===2?1:.2}"><i class="ti ti-${p===2?'check':'lock'}" style="font-size:13px;color:${p===2?'var(--ok)':'var(--t3)'}"></i> ${p===2?'Add 1 NQ e-mini (phase 2)':'Add e-mini — unlocks phase 2'}</div>
+        <div class="pill" style="opacity:${p===2?1:.2}"><i class="ti ti-${p===2?'check':'lock'}" style="font-size:13px;color:${p===2?'var(--ok)':'var(--t3)'}"></i> ${p===2?'Scale to 3–4 MNQ (phase 2)':'3–4 MNQ — unlocks phase 2'}</div>
       </div>
 
       <div class="card">
-        <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-calculator" aria-hidden="true"></i> Risk math</div>
-        <div class="rrow"><i class="ti ti-trending-down" style="color:var(--bad);font-size:13px;margin-top:1px" aria-hidden="true"></i><div><div>Avg loss: <strong>$60</strong></div><div style="font-size:11px;color:var(--t2)">Stop moved to breakeven early</div></div></div>
-        <div class="rrow"><i class="ti ti-trending-up" style="color:var(--ok);font-size:13px;margin-top:1px" aria-hidden="true"></i><div><div>Avg win: <strong>$250</strong></div><div style="font-size:11px;color:var(--t2)">Committed trade, full thesis</div></div></div>
-        <div class="rrow"><i class="ti ti-shield" style="color:var(--warn);font-size:13px;margin-top:1px" aria-hidden="true"></i><div><div>Losses to drawdown: <strong>${Math.floor(a.maxDrawdown/60)}</strong></div><div style="font-size:11px;color:var(--t2)">$${a.maxDrawdown.toLocaleString()} ÷ $60 avg</div></div></div>
-        <div class="rrow"><i class="ti ti-target" style="color:var(--ok);font-size:13px;margin-top:1px" aria-hidden="true"></i><div><div>Win rate needed: <strong>19%</strong></div><div style="font-size:11px;color:var(--t2)">You target 60% — strong edge</div></div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <div class="lbl" style="margin:0;display:flex;align-items:center;gap:4px"><i class="ti ti-calculator"></i> Risk math</div>
+          <span style="font-size:10px;color:var(--t3)">${st.isBase?'Baseline — log 3+ trades':'Live — '+st.nT+' trades'}</span>
+        </div>
+        <div class="rrow"><i class="ti ti-trending-down" style="color:var(--bad);font-size:13px;margin-top:1px"></i>
+          <div><div>Avg loss: <strong>${fm(st.avgL)}</strong><span class="stag ${st.isBase?'base':'live'}">${st.isBase?'baseline':st.nL+' losses'}</span></div><div style="font-size:11px;color:var(--t2)">Stop moved to breakeven early</div></div></div>
+        <div class="rrow"><i class="ti ti-trending-up" style="color:var(--ok);font-size:13px;margin-top:1px"></i>
+          <div><div>Avg win: <strong>${fm(st.avgW)}</strong><span class="stag ${st.isBase?'base':'live'}">${st.isBase?'baseline':st.nW+' wins'}</span></div><div style="font-size:11px;color:var(--t2)">Committed trade, full thesis</div></div></div>
+        <div class="rrow"><i class="ti ti-percentage" style="color:var(--info);font-size:13px;margin-top:1px"></i>
+          <div><div>Win rate: <strong style="color:${st.wr!==null?(st.wr>=st.beWR?'var(--ok)':'var(--bad)'):'var(--t1)'}">${st.wr!==null?fp(st.wr):'—'}</strong><span class="stag ${st.isBase?'base':'live'}">${st.isBase?'no trades':st.nT+' trades'}</span></div><div style="font-size:11px;color:var(--t2)">Target 60% &nbsp;|&nbsp; Break-even: <strong>${fp(st.beWR)}</strong></div></div></div>
+        <div class="rrow"><i class="ti ti-shield" style="color:var(--warn);font-size:13px;margin-top:1px"></i>
+          <div><div>Losses to drawdown: <strong>${Math.floor(st.lToDD)}</strong><span class="stag ${st.isBase?'base':'live'}">${st.isBase?'baseline':'live'}</span></div><div style="font-size:11px;color:var(--t2)">$${a.maxDrawdown.toLocaleString()} ÷ ${fm(st.avgL)} avg loss</div></div></div>
+        ${exp>0?`<div class="rrow"><i class="ti ti-ruler" style="color:var(--t2);font-size:13px;margin-top:1px"></i>
+          <div><div>Selected exposure: <strong style="color:${ok?'var(--ok)':'var(--warn)'}">$${exp.toLocaleString()}</strong> at 14pt stop</div><div style="font-size:11px;color:var(--t2)">${conLabel()} &nbsp;|&nbsp; ${ok?'Within phase limits':'Exceeds phase recommendation'}</div></div></div>`:''}
       </div>
 
       <div class="card">
-        <div class="lbl" style="margin-bottom:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-database" aria-hidden="true"></i> Data &amp; export</div>
-        <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.65">Trades auto-save to your browser. Export a CSV to open directly in Google Sheets for deeper analysis and performance tracking.</div>
-        <button onclick="exportCSV()" class="btn" style="width:100%;justify-content:center">
-          <i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Export trades to CSV
-        </button>
+        <div class="lbl" style="margin-bottom:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-database"></i> Data &amp; export</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.65">Trades auto-save locally. Export CSV to open directly in Google Sheets — columns map cleanly to spreadsheet fields.</div>
+        <button onclick="exportCSV()" class="btn" style="width:100%;justify-content:center;margin-bottom:6px"><i class="ti ti-file-spreadsheet"></i> Export this account to CSV</button>
+        <button onclick="exportAllCSV()" class="btn" style="width:100%;justify-content:center"><i class="ti ti-files"></i> Export all accounts to CSV</button>
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:1rem">
-    <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-book-2" aria-hidden="true"></i> Phase rules — always visible</div>
+    <div class="lbl" style="margin-bottom:10px;display:flex;align-items:center;gap:4px"><i class="ti ti-book-2"></i> Phase rules — reference</div>
     <div class="pgrid">
-      <div><div style="font-size:11px;font-weight:500;color:#c4b5fd;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-1" aria-hidden="true"></i> Phase 1</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.7">2 MNQ only<br>Days 1–3 or &lt;$750<br>No e-minis<br>Stop at daily limit</div></div>
-      <div><div style="font-size:11px;font-weight:500;color:#fcd34d;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-2" aria-hidden="true"></i> Phase 2</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.7">2 MNQ + 1 NQ<br>Or 3–4 micros<br>$750 to target<br>Stop at daily limit</div></div>
-      <div><div style="font-size:11px;font-weight:500;color:#6ee7b7;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-3" aria-hidden="true"></i> Phase 3</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.7">2–4 MNQ only<br>Target reached<br>Protect the gain<br>No e-minis here</div></div>
-      <div><div style="font-size:11px;font-weight:500;color:#fca5a5;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-alert-triangle" aria-hidden="true"></i> After any loss</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.7">1 micro next trade<br>Win first, reassess<br>No e-minis<br>Then resume phase</div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#c4b5fd;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-1"></i> Phase 1</div><div style="font-size:12px;color:var(--t2);line-height:1.7">2 MNQ only<br>Days 1–3 or &lt;$750<br>No e-minis<br>Stop at daily limit</div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#fcd34d;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-2"></i> Phase 2</div><div style="font-size:12px;color:var(--t2);line-height:1.7">2 MNQ + 1 NQ<br>Or 3–4 micros<br>$750 to target<br>Stop at daily limit</div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#6ee7b7;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-number-3"></i> Phase 3</div><div style="font-size:12px;color:var(--t2);line-height:1.7">2–4 MNQ only<br>Target reached<br>Protect the gain<br>No e-minis here</div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#fca5a5;margin-bottom:6px;display:flex;align-items:center;gap:3px"><i class="ti ti-alert-triangle"></i> After any loss</div><div style="font-size:12px;color:var(--t2);line-height:1.7">1 micro next trade<br>Win first, reassess<br>No e-minis<br>Then resume phase</div></div>
     </div>
   </div>`;
 }
 
-// ─── Panel router ─────────────────────────────────────────────
-function renderPanel() {
-  const p = document.getElementById('panel');
-  if (S.mode === 'add') {
-    p.innerHTML = `<div class="card" style="max-width:440px">
-      <div style="font-size:16px;font-weight:500;margin-bottom:1.1rem">New account</div>
-      ${flds('S.nw', S.nw, 'setNewType')}
-      <div style="display:flex;gap:8px;margin-top:1.1rem">
-        <button onclick="cancelAdd()" class="btn" style="flex:1;justify-content:center;color:var(--t2)">Cancel</button>
-        <button onclick="createAcct()" class="btn" style="flex:2;justify-content:center;font-weight:500">Create account</button>
-      </div>
-    </div>`;
-  } else if (S.mode === 'edit') {
-    p.innerHTML = `<div class="card" style="max-width:440px">
-      <div style="font-size:16px;font-weight:500;margin-bottom:1.1rem">Edit account</div>
-      ${flds('S.ed', S.ed, 'setEditType')}
-      <div style="font-size:12px;color:var(--t2);margin-top:10px;padding:9px 12px;background:var(--s2);border-radius:var(--r);display:flex;align-items:center;gap:7px;line-height:1.5">
-        <i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0" aria-hidden="true"></i>
-        Changing settings preserves your trade history and P&L.
-      </div>
-      <div style="display:flex;gap:8px;margin-top:1.1rem">
-        <button onclick="cancelEdit()" class="btn" style="flex:1;justify-content:center;color:var(--t2)">Cancel</button>
-        <button onclick="saveEdit()" class="btn" style="flex:2;justify-content:center;font-weight:500">Save changes</button>
-      </div>
-    </div>`;
-  } else {
-    const a = ga();
-    p.innerHTML = a
-      ? renderDash(a)
-      : `<div style="padding:3rem;text-align:center;color:var(--t2)">Select an account from the sidebar</div>`;
-  }
+function renderPanel(){
+  const el=document.getElementById('panel');
+  if(S.mode==='ov'){el.innerHTML=renderOv();return;}
+  if(S.mode==='add'){el.innerHTML=`<div class="card" style="max-width:440px"><div style="font-size:16px;font-weight:500;margin-bottom:1.1rem">New account</div>${flds('S.nw',S.nw,'setNewType')}<div style="display:flex;gap:8px;margin-top:1.1rem"><button onclick="cancelAdd()" class="btn" style="flex:1;justify-content:center;color:var(--t2)">Cancel</button><button onclick="createAcct()" class="btn" style="flex:2;justify-content:center;font-weight:500">Create account</button></div></div>`;return;}
+  if(S.mode==='edit'){el.innerHTML=`<div class="card" style="max-width:440px"><div style="font-size:16px;font-weight:500;margin-bottom:1.1rem">Edit account</div>${flds('S.ed',S.ed,'setEditType')}<div style="font-size:12px;color:var(--t2);margin-top:10px;padding:9px 12px;background:var(--s2);border-radius:var(--r);display:flex;align-items:center;gap:7px;line-height:1.5"><i class="ti ti-info-circle" style="font-size:14px;flex-shrink:0"></i> Changing settings preserves your trade history and P&L.</div><div style="display:flex;gap:8px;margin-top:1.1rem"><button onclick="cancelEdit()" class="btn" style="flex:1;justify-content:center;color:var(--t2)">Cancel</button><button onclick="saveEdit()" class="btn" style="flex:2;justify-content:center;font-weight:500">Save changes</button></div></div>`;return;}
+  const a=ga();
+  el.innerHTML=a?renderDash(a):`<div style="padding:3rem;text-align:center;color:var(--t2)">Select an account from the sidebar</div>`;
 }
 
-function render() { renderSidebar(); renderPanel(); }
-
-// ─── Boot ─────────────────────────────────────────────────────
-load();
-render();
+function render(){renderSidebar();renderPanel();}
+load();render();
 </script>
 </body>
 </html>
