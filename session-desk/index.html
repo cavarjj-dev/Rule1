@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NQ Session Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: a trading-desk notebook. Header strip with today's context, tabbed sections, cards only where a block is a separate instrument. */
+:root{
+  --bg:#f3f4f1; --panel:#ffffff; --ink:#15191f; --muted:#5d6570; --line:#d9dcd6;
+  --accent:#b8700a; --accent-soft:#f6e7cd; --bull:#13804b; --bear:#c2362b; --info:#2c5d9e;
+  --s1:#2c5d9e; --s2:#b8700a; --s3:#13804b; --s4:#8a4fb8; --mutebar:#b9beb6;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1216; --panel:#171b21; --ink:#e7e9e4; --muted:#98a0a8; --line:#2a3038;
+  --accent:#e1a23c; --accent-soft:#3a2e1a; --bull:#3fbf7f; --bear:#ef6a5e; --info:#7fa8e0;
+  --s1:#7fa8e0; --s2:#e1a23c; --s3:#3fbf7f; --s4:#c39be6; --mutebar:#4a525b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --panel:#171b21; --ink:#e7e9e4; --muted:#98a0a8; --line:#2a3038;
+  --accent:#e1a23c; --accent-soft:#3a2e1a; --bull:#3fbf7f; --bear:#ef6a5e; --info:#7fa8e0;
+  --s1:#7fa8e0; --s2:#e1a23c; --s3:#3fbf7f; --s4:#c39be6; --mutebar:#4a525b; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin-inline:auto;padding-inline:20px;padding-block:20px 48px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:.01em;text-wrap:balance;margin:0}
+h1{font-size:2.1rem;line-height:1.05}
+h2{font-size:1.45rem;margin-block:28px 10px}
+h3{font-size:1.1rem}
+.mono,.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.top .meta{font-size:.8rem;color:var(--muted);text-align:right}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:14px}
+.strip>div{background:var(--panel);padding:12px 14px;min-width:0}
+.strip .v{font-family:var(--display);font-size:1.9rem;font-weight:600;line-height:1.1}
+.strip .k{font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:18px;border-bottom:1px solid var(--line)}
+.tabs button{font:600 1rem var(--display);letter-spacing:.03em;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:8px 12px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0;position:relative}
+.card p.note{margin:4px 0 12px;font-size:.84rem;color:var(--muted);max-width:65ch}
+.lede{max-width:70ch;color:var(--muted);margin:6px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.78rem;color:var(--muted);margin-bottom:8px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:.78rem;box-shadow:0 4px 12px rgba(0,0,0,.15);white-space:nowrap;z-index:5}
+.tbox{overflow-x:auto;max-height:440px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em}
+td.num,th.num{text-align:right}
+.pill{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.pill.bull{color:var(--bull);border-color:currentColor}.pill.bear{color:var(--bear);border-color:currentColor}.pill.warn{color:var(--accent);border-color:currentColor}
+.pos{color:var(--bull)}.neg{color:var(--bear)}
+.rules{margin:0;padding-left:1.2rem;max-width:75ch}
+.rules li{margin-bottom:8px}
+.alert{border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 var(--r) var(--r) 0;margin-top:14px}
+form .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:10px;margin-bottom:10px}
+label{display:flex;flex-direction:column;gap:3px;font-size:.76rem;color:var(--muted);min-width:0}
+input,select,textarea{font:inherit;font-size:.9rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+textarea{min-height:52px;resize:vertical}
+.btn{font:600 .95rem var(--display);letter-spacing:.04em;text-transform:uppercase;border-radius:4px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);padding:7px 14px;cursor:pointer}
+.btn.ghost{background:none;color:var(--ink)}
+.btn.small{font-size:.8rem;padding:3px 8px}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:500 .82rem var(--body);border:0;background:none;color:var(--muted);padding:5px 10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.acct{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar>span{display:block;height:100%}
+.status{font-size:.82rem;min-height:1.2em;color:var(--muted)}
+.empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+@media (prefers-reduced-motion: no-preference){.panel{animation:fade .25s ease-out}}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">NQ1! · CME Globex · New York time · <a href="../" style="color:inherit">Account Dashboard</a></div>
+      <h1>NQ Session Desk</h1>
+    </div>
+    <div class="meta" id="meta">Loading study data…</div>
+  </header>
+
+  <div class="strip" id="strip">
+    <div><div class="k">A-setup, normal days: London sweep with 4H behind it reached the other side</div><div class="v num" id="h-a">—</div></div>
+    <div><div class="k">Midnight open traded when NY opened within 100 pts</div><div class="v num" id="h-mid">—</div></div>
+    <div><div class="k">NY high or low in place by 10:30</div><div class="v num" id="h-ext">—</div></div>
+    <div><div class="k">5M OTE setup (indicator rules): trades · avg R · median stop</div><div class="v num" id="h-setup">—</div></div>
+  </div>
+  <div id="newsAlert" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-study" aria-selected="true" data-tab="study">Study</button>
+    <button role="tab" id="tab-news" aria-selected="false" data-tab="news">News days</button>
+    <button role="tab" id="tab-exec" aria-selected="false" data-tab="exec">Execution</button>
+    <button role="tab" id="tab-accounts" aria-selected="false" data-tab="accounts">Accounts</button>
+  </nav>
+
+  <!-- STUDY -->
+  <section class="panel" id="study">
+    <h2>How London's high or low gets taken</h2>
+    <div class="grid">
+      <div class="card"><h3>NY reached the untaken side of London</h3><p class="note">After London's high or low was taken between 5:00 and the open. Sweep: wick through, close back inside. Break: close through.</p><div class="legend" id="lg-raids"></div><div id="c-raids"></div></div>
+      <div class="card"><h3>Same test, each half of the sample</h3><p class="note" id="halfNote">A rule earns a place only if it holds in both halves.</p><div class="legend" id="lg-halves"></div><div id="c-halves"></div></div>
+    </div>
+    <h2>Midnight open and timing</h2>
+    <div class="grid">
+      <div class="card"><h3>NY traded back to the midnight open</h3><p class="note">By distance from midnight at the NY open.</p><div class="legend" id="lg-mid"></div><div id="c-mid"></div></div>
+      <div class="card"><h3>When the NY high and low printed</h3><p class="note">Share of 15M days by half hour.</p><div class="legend" id="lg-time"></div><div id="c-time"></div></div>
+    </div>
+    <h2>Bias and the calendar</h2>
+    <div class="grid">
+      <div class="card"><h3>NY closed up, by bias stack at 9:00</h3><p class="note">Daily / 4H / 1H structure bias: direction of the last close beyond a swing point.</p><div id="c-stack"></div></div>
+      <div class="card"><h3>Day that made the weekly high and low</h3><p class="note" id="weekNote">Full weeks, roll weeks left out.</p><div class="legend" id="lg-week"></div><div id="c-week"></div></div>
+    </div>
+    <h2>Recent sessions</h2>
+    <div class="card"><div class="tbox"><table id="t-recent"><thead><tr><th>Day</th><th>News</th><th>4H bias</th><th>London raid</th><th>Day type</th><th class="num">NY range</th><th>Midnight traded</th></tr></thead><tbody></tbody></table></div></div>
+    <h2>What didn't hold up</h2>
+    <div class="card"><p class="note">Measured from the moment the tell is visible to the NY close. Near 50% means a coin flip.</p><div id="c-tells"></div></div>
+    <h2 id="data-updates">Data</h2>
+    <div class="card"><p class="note" style="max-width:75ch">The study refreshes every Saturday from the TradingView exports you upload on the Claude version of this page (Update data section). Each refresh commits a new <span class="mono">study.json</span> to this repository, so the history of every refresh is kept in the repo's commits.</p></div>
+  </section>
+
+  <!-- NEWS -->
+  <section class="panel" id="news" hidden>
+    <h2>Coming up</h2>
+    <div class="card"><div class="tbox"><table id="t-upcoming"><thead><tr><th>Date</th><th>Event</th><th>Time ET</th><th>Source</th></tr></thead><tbody></tbody></table></div><p class="note" style="margin-top:10px">Official BLS and Federal Reserve schedules. Dates can move; the weekly refresh picks up changes made to the calendar file.</p></div>
+    <h2>How NQ behaves on news days</h2>
+    <div class="grid">
+      <div class="card"><h3>A-setup hit rate by day type</h3><p class="note">London sweep with the 4H bias pointing at the other side. On 8:30 data days the edge mostly disappears.</p><div id="c-newsA"></div></div>
+      <div class="card"><h3>Session shape</h3><p class="note">Hourly data for the full sample; 8:30 and afternoon ranges from 15M data.</p><div class="tbox"><table id="t-news"><thead><tr><th>Day type</th><th class="num">Days</th><th class="num">NY range</th><th class="num">Trend %</th><th class="num">Reversal %</th><th class="num">8:30–9:30 range</th><th class="num">NY follows 8:30 move</th><th class="num">2–4 PM range</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+    <div class="alert" id="newsRule"><b>Rule:</b> on CPI, NFP and PPI mornings, don't take the A-setup at the open. Let the 8:30–9:30 range settle and require the 5M structure shift. On FOMC days, flatten or stand aside before 2:00 PM.</div>
+  </section>
+
+  <!-- EXECUTION -->
+  <section class="panel" id="exec" hidden>
+    <h2>Gaps</h2>
+    <div class="grid">
+      <div class="card"><h3>Opening range gap</h3><p class="note">Prior 4:15 close to 9:30 open, by gap size. Under 150 pts the CE is an early magnet and the day leans toward fading the gap.</p><div class="legend" id="lg-org"></div><div id="c-org"></div></div>
+      <div class="card"><h3>NDOG and NWOG</h3><p class="note" id="gapNote">NDOG tested over its own day, NWOG over its week.</p><div class="legend" id="lg-gaps"></div><div id="c-gaps"></div></div>
+    </div>
+    <h2>Entry triggers</h2>
+    <div class="card"><p class="note">First structure shift between 9:30 and 11:00 in the 4H direction; stop 2 pts beyond the leg extreme. OTE on 5M is the indicator's entry.</p><div class="tbox"><table id="t-entries"><thead><tr><th>Trigger · TF</th><th class="num">Trades</th><th class="num">Filled %</th><th class="num">Win % at 2R</th><th class="num">Avg R at 2R</th><th class="num">Avg R at 3R</th><th class="num">Median stop</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="grid" style="margin-top:14px">
+      <div class="card"><h3>5M trades by time of the structure shift</h3><p class="note">Win rate at 2R, all triggers pooled.</p><div id="c-win"></div></div>
+      <div class="card"><h3>SMT at the London raid (NQ vs ES)</h3><p class="note">Did NQ reach the other side of London, split by whether ES took the same level?</p><div id="c-smt"></div></div>
+    </div>
+    <h2>Indicator setups, most recent first</h2>
+    <div class="card"><p class="note">The ICT Session Context engine replayed on 5M data: entry at the 70.5% OTE, 2R target.</p><div class="tbox"><table id="t-setups"><thead><tr><th>Day</th><th>Side</th><th>Shift</th><th class="num">Stop pts</th><th>News</th><th>Result</th><th class="num">R</th></tr></thead><tbody></tbody></table></div></div>
+    <h2>1M refinement inside the 5M zone</h2>
+    <div class="card"><div class="tbox"><table id="t-nested"><thead><tr><th>Day</th><th>Side</th><th>Result</th><th class="num">1M stop</th><th class="num">1M R</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ACCOUNTS -->
+  <section class="panel" id="accounts" hidden>
+    <div class="acct" style="margin-top:10px"><div class="status" id="dbStatus">Opening your trade log…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small" type="button" id="bkBtn">Download backup</button><label class="btn ghost small" for="rsFile" style="flex-direction:row;color:var(--ink)">Restore backup<input type="file" id="rsFile" accept=".json,application/json" hidden></label></div></div>
+    <p class="note small">Trades are saved in this browser, in the same store as your Account Dashboard, so both pages show one journal. Nothing you log here is committed to GitHub. Download a backup after each session.</p>
+    <h2>Accounts</h2>
+    <div id="acctCards" class="grid"><div class="empty">Your accounts appear here. Add one below to start logging trades.</div></div>
+    <h2>Performance</h2>
+    <div class="card">
+      <div class="acct" style="margin-bottom:8px"><h3>Running P&amp;L</h3><select id="perfAcct" aria-label="Account for chart"><option value="all">All accounts</option></select></div>
+      <div id="c-equity" style="min-height:160px"></div>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="card"><h3>By setup type</h3><p class="note">A-setup and standard trades follow the indicator; deviations are trades taken outside the plan.</p><div class="tbox"><table id="t-bysetup"><thead><tr><th>Setup</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h3>Normal vs news days</h3><p class="note">Tagged automatically from the news calendar.</p><div class="tbox"><table id="t-bynews"><thead><tr><th>Day</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <h2>Log a trade</h2>
+    <div class="card">
+      <form id="tradeForm">
+        <div class="row">
+          <label for="f-date">Date<input type="date" id="f-date" required></label>
+          <label for="f-time">Entry time (ET)<input type="time" id="f-time"></label>
+          <label for="f-acct">Account<select id="f-acct" required></select></label>
+          <label for="f-sym">Contract<select id="f-sym"><option value="MNQ">MNQ ($2/pt)</option><option value="NQ">NQ ($20/pt)</option></select></label>
+          <label for="f-side">Side<select id="f-side"><option>Long</option><option>Short</option></select></label>
+          <label for="f-qty">Contracts<input type="number" id="f-qty" min="1" step="1" value="2" required></label>
+        </div>
+        <div class="row">
+          <label for="f-entry">Entry price<input type="number" id="f-entry" step="0.25" inputmode="decimal"></label>
+          <label for="f-exit">Exit price<input type="number" id="f-exit" step="0.25" inputmode="decimal"></label>
+          <label for="f-stop">Stop (pts)<input type="number" id="f-stop" step="0.25" min="0" inputmode="decimal"></label>
+          <label for="f-fees">Fees ($)<input type="number" id="f-fees" step="0.01" min="0" value="2.48"></label>
+          <label for="f-pnl">Net P&amp;L ($)<input type="number" id="f-pnl" step="0.01" required></label>
+        </div>
+        <div class="row">
+          <label for="f-setup">Setup<select id="f-setup"><option>A-setup</option><option selected>Standard</option><option>Deviation</option></select></label>
+          <label for="f-plan">Followed the plan?<select id="f-plan"><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <label for="f-notes" style="grid-column:span 2">Notes<textarea id="f-notes" placeholder="What did you see? Why this trade?"></textarea></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" type="submit" id="saveTrade">Save trade</button><span class="status" id="formStatus"></span></div>
+      </form>
+    </div>
+
+    <h2>Trade log</h2>
+    <div class="card"><div class="tbox"><table id="t-trades"><thead><tr><th>Date</th><th>Account</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Net</th><th>Setup</th><th>Plan</th><th>News</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div></div>
+
+    <h2>Add an account</h2>
+    <div class="card">
+      <form id="acctForm">
+        <div class="row">
+          <label for="a-name">Name<input id="a-name" required placeholder="Eval #2 — Prop Firm"></label>
+          <label for="a-type">Type<select id="a-type"><option value="eval">Prop eval</option><option value="funded">Funded</option><option value="paper">Paper</option><option value="live">Live</option></select></label>
+          <label for="a-start">Account size ($)<input type="number" id="a-start" step="1" value="50000"></label>
+          <label for="a-target">Profit target ($)<input type="number" id="a-target" step="1" value="3000"></label>
+          <label for="a-dd">Max drawdown ($)<input type="number" id="a-dd" step="1" value="2500"></label>
+          <label for="a-daily">Daily loss limit ($)<input type="number" id="a-daily" step="1" value="1500"></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" type="submit">Add account</button><span class="status" id="acctStatus"></span></div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const fmtUSD = (v) => (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('en-US', {maximumFractionDigits: 0});
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let STUDY = null, NEWS_BY_DATE = {};
+
+/* ---------- tabs ---------- */
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  ['study', 'news', 'exec', 'accounts'].forEach(id => { $('#' + id).hidden = id !== name; });
+  try { localStorage.setItem('nqdesk-tab', name); } catch (e) {}
+  redraw();
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['study', 'news', 'exec', 'accounts'].includes(h)) showTab(h); });
+
+/* ---------- bar chart ---------- */
+function legend(el, items) {
+  el.replaceChildren(...items.map(([label, color]) => { const s = document.createElement('span'); const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = color; s.append(sw, label); return s; }));
+}
+function bars(el, rows, series, opts = {}) {
+  el.replaceChildren();
+  if (!rows || !rows.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = opts.empty || 'Not enough data yet.'; el.append(d); return; }
+  const cats = [...new Set(rows.map(r => r.group))];
+  const W = Math.max(280, el.clientWidth || 480), barH = 14, gap = 3, gg = 12;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('width', '100%'); el.append(svg);
+  const meas = document.createElementNS(NS, 'text'); meas.setAttribute('font-size', '12'); svg.append(meas);
+  let lab = 0; cats.forEach(c => { meas.textContent = c; lab = Math.max(lab, meas.getComputedTextLength()); }); meas.remove();
+  lab = Math.min(lab + 12, W * 0.42);
+  const valW = 82, plotW = Math.max(60, W - lab - valW);
+  const gH = series.length * (barH + gap) - gap, H = cats.length * (gH + gg);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const x = v => (v / 100) * plotW;
+  [0, 50, 100].forEach(v => { const l = document.createElementNS(NS, 'line'); l.setAttribute('x1', lab + x(v)); l.setAttribute('x2', lab + x(v)); l.setAttribute('y1', 0); l.setAttribute('y2', H - gg / 2); l.setAttribute('stroke', v === 50 && opts.ref ? css('--muted') : css('--line')); if (v === 50 && opts.ref) l.setAttribute('stroke-dasharray', '3 3'); svg.append(l); });
+  let tip = el.parentNode.querySelector(':scope > .tip'); if (!tip) { tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; el.parentNode.append(tip); }
+  cats.forEach((c, i) => {
+    const y0 = i * (gH + gg);
+    const t = document.createElementNS(NS, 'text'); t.setAttribute('x', lab - 8); t.setAttribute('y', y0 + gH / 2); t.setAttribute('dy', '0.35em'); t.setAttribute('text-anchor', 'end'); t.setAttribute('font-size', '12'); t.setAttribute('fill', css('--ink')); t.textContent = c; svg.append(t);
+    series.forEach((s, j) => {
+      const r = rows.find(d => d.group === c && d.tf === s.key); if (!r || r.pct === null) return;
+      const y = y0 + j * (barH + gap);
+      const rect = document.createElementNS(NS, 'rect'); rect.setAttribute('x', lab); rect.setAttribute('y', y); rect.setAttribute('height', barH); rect.setAttribute('rx', 3); rect.setAttribute('width', Math.max(2, x(r.pct))); rect.setAttribute('fill', s.color);
+      rect.addEventListener('mousemove', ev => { const b = el.parentNode.getBoundingClientRect(); tip.hidden = false; tip.style.left = Math.min(ev.clientX - b.left + 12, b.width - 200) + 'px'; tip.style.top = (ev.clientY - b.top + 12) + 'px'; tip.textContent = `${c} · ${s.label}: ${r.pct}% of ${r.n} ${opts.unit || 'days'}`; });
+      rect.addEventListener('mouseleave', () => { tip.hidden = true; });
+      svg.append(rect);
+      const v = document.createElementNS(NS, 'text'); v.setAttribute('x', lab + x(r.pct) + 6); v.setAttribute('y', y + barH / 2); v.setAttribute('dy', '0.35em'); v.setAttribute('font-size', '11'); v.setAttribute('font-family', css('--mono')); v.setAttribute('fill', css('--muted')); v.textContent = `${r.pct}%  n=${r.n}`; svg.append(v);
+    });
+  });
+}
+function fillTable(sel, rows, cells) {
+  const tb = $(sel + ' tbody'); tb.replaceChildren();
+  rows.forEach(r => { const tr = document.createElement('tr'); cells(r).forEach(([v, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; if (v instanceof Node) td.append(v); else td.textContent = v === null || v === undefined || v === '' ? '—' : v; tr.append(td); }); tb.append(tr); });
+}
+const pill = (text, cls) => { const s = document.createElement('span'); s.className = 'pill ' + (cls || ''); s.textContent = text; return s; };
+
+/* ---------- study rendering ---------- */
+function drawStudy() {
+  if (!STUDY) return;
+  const C = STUDY.charts, s1 = css('--s1'), s2 = css('--s2'), s3 = css('--s3'), s4 = css('--s4');
+  const TF = [{key: '1H', label: '1H', color: s1}, {key: '15M', label: '15M', color: s2}];
+  const HL = [{key: 'High', label: 'High', color: s3}, {key: 'Low', label: 'Low', color: s4}];
+  const tab = document.querySelector('.tabs button[aria-selected="true"]').dataset.tab;
+  if (tab === 'study') {
+    legend($('#lg-raids'), [['1H, full sample', s1], ['15M', s2]]); bars($('#c-raids'), C.raids, TF);
+    legend($('#lg-halves'), [['First half', s1], ['Second half', s3]]); bars($('#c-halves'), C.halves, [{key: 'First half', label: 'First half', color: s1}, {key: 'Second half', label: 'Second half', color: s3}]);
+    legend($('#lg-mid'), [['1H', s1], ['15M', s2]]); bars($('#c-mid'), C.midnight, TF);
+    legend($('#lg-time'), [['NY high', s3], ['NY low', s4]]); bars($('#c-time'), C.timing, HL);
+    bars($('#c-stack'), C.stack, [{key: 'NY closed up', label: 'NY closed up', color: s1}], {ref: true});
+    legend($('#lg-week'), [['Weekly high', s3], ['Weekly low', s4]]); bars($('#c-week'), C.weekdays, HL, {unit: 'weeks'});
+    bars($('#c-tells'), C.tells, [{key: '15M', label: '15M', color: css('--mutebar')}], {ref: true});
+  } else if (tab === 'news') {
+    bars($('#c-newsA'), STUDY.news.sweep_chart, [{key: '1H', label: 'Reached other side', color: s1}]);
+  } else if (tab === 'exec') {
+    legend($('#lg-org'), [['CE reached', s1], ['Filled', s3], ['Closed with gap', s2]]);
+    bars($('#c-org'), C.org, [{key: 'CE reached', label: 'CE reached', color: s1}, {key: 'Filled', label: 'Filled', color: s3}, {key: 'Closed with gap', label: 'Closed with gap', color: s2}]);
+    legend($('#lg-gaps'), [['CE reached', s1], ['Filled', s3]]); bars($('#c-gaps'), C.gaps, [{key: 'CE reached', label: 'CE reached', color: s1}, {key: 'Filled', label: 'Filled', color: s3}], {unit: 'gaps'});
+    bars($('#c-win'), C.windows, [{key: '5M', label: 'Win % at 2R', color: s1}], {unit: 'trades', ref: true, empty: 'Needs 5M exports.'});
+    bars($('#c-smt'), C.smt, [{key: '15M', label: 'Reached other side', color: s1}], {empty: 'Needs ES 15M exports.'});
+  }
+}
+function renderStudyStatic() {
+  const S = STUDY, h = S.headline, m = S.meta;
+  $('#meta').textContent = `Hourly ${m.span_1h[0]} → ${m.span_1h[1]} (${m.days_1h} days) · 15M ${m.days_15m} days · 5M ${m.days_5m} days · refreshed ${new Date(m.generated).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'})}`;
+  $('#h-a').textContent = h.a_setup_normal.pct === null ? '—' : `${h.a_setup_normal.pct}% · ${h.a_setup_normal.n}`;
+  $('#h-mid').textContent = `${h.mid_near.pct}% · ${h.mid_near.n}`;
+  $('#h-ext').textContent = `${h.ext_1030.pct}% · ${h.ext_1030.n}`;
+  $('#h-setup').textContent = h.setup.trades ? `${h.setup.trades} · ${h.setup.avg_R > 0 ? '+' : ''}${h.setup.avg_R}R · ${h.setup.med_stop}` : '—';
+  $('#halfNote').textContent = `Hourly sample split at ${m.half_split}. A rule earns a place only if it holds in both halves.`;
+  $('#weekNote').textContent = `${m.weeks} full weeks, roll weeks left out.`;
+  $('#gapNote').textContent = `NDOG tested over its own day (median size ${Math.round(m.gap_sizes.NDOG)} pts), NWOG over its week (median ${Math.round(m.gap_sizes.NWOG)} pts).`;
+  fillTable('#t-recent', S.recent, r => [[r.day + ' ' + r.dow], [r.news === 'None' ? '' : pill(r.news, 'warn')], [pill(r.bias4h, r.bias4h === 'bull' ? 'bull' : r.bias4h === 'bear' ? 'bear' : '')], [r.raid], [r.day_type], [r.rng, 'num'], [r.mid_revisit ? 'Yes' : 'No']]);
+  fillTable('#t-upcoming', S.news.upcoming, r => [[new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})], [pill(r.event, 'warn')], [r.time, 'mono'], [r.source]]);
+  const byG = Object.fromEntries(S.news.intraday.map(r => [r.group, r]));
+  fillTable('#t-news', S.news.by_group, r => { const i = byG[r.group] || {}; return [[r.group], [r.days, 'num'], [r.rth_range_med, 'num'], [r.trend_pct, 'num'], [r.reversal_pct, 'num'], [i.range_830_930, 'num'], [i.follows_830_pct === null || i.follows_830_pct === undefined ? null : i.follows_830_pct + '%', 'num'], [i.range_2_4pm, 'num']]; });
+  fillTable('#t-entries', S.tables.entries, r => [[r.key], [r.trades, 'num'], [r.fill_pct, 'num'], [r.win_pct_2R, 'num'], [r.avg_R_2R, 'num'], [r.avg_R_3R, 'num'], [r.median_risk_pts, 'num']]);
+  fillTable('#t-setups', S.tables.setup_log, r => [[r.day], [r.side], [r.mss, 'mono'], [r.stop_pts, 'num'], [r.news === 'None' ? '' : pill(r.news, 'warn')], [r.result], [r.R === null ? null : (r.R > 0 ? '+' : '') + r.R, 'num ' + (r.R > 0 ? 'pos' : r.R < 0 ? 'neg' : '')]]);
+  fillTable('#t-nested', S.tables.nested, r => [[r.day], [r.side], [r.result], [r.stop1, 'num'], [r.R1, 'num']]);
+  NEWS_BY_DATE = {}; (S.news.calendar || []).forEach(e => { NEWS_BY_DATE[e.date] = NEWS_BY_DATE[e.date] ? NEWS_BY_DATE[e.date] + ' + ' + e.event : e.event; });
+  const today = new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+  const next = S.news.upcoming[0];
+  const box = $('#newsAlert');
+  if (NEWS_BY_DATE[today]) { box.hidden = false; box.className = 'alert'; box.textContent = `Today is a ${NEWS_BY_DATE[today]} day. The A-setup's edge mostly disappears on data mornings; wait for the 5M structure shift, and stand aside before a 2:00 PM FOMC release.`; }
+  else if (next) { box.hidden = false; box.className = 'alert'; box.textContent = `Next scheduled release: ${next.event} on ${new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'long', month: 'short', day: 'numeric'})} at ${next.time} ET.`; }
+}
+
+/* ---------- accounts & trades (db) ---------- */
+let DB = null, ACCTS = [], TRADES = [], canWrite = true;
+const newsFor = d => NEWS_BY_DATE[d] || '';
+function acctName(id) { const a = ACCTS.find(x => x.id === id); return a ? a.name : 'Removed account'; }
+function stats(ts) {
+  const w = ts.filter(t => t.pnl > 0), l = ts.filter(t => t.pnl <= 0);
+  const net = ts.reduce((a, t) => a + t.pnl, 0);
+  const gw = w.reduce((a, t) => a + t.pnl, 0), gl = -l.reduce((a, t) => a + t.pnl, 0);
+  return {n: ts.length, net, win: ts.length ? Math.round(100 * w.length / ts.length) : null, avgW: w.length ? gw / w.length : 0, avgL: l.length ? gl / l.length : 0, pf: gl > 0 ? gw / gl : null, avg: ts.length ? net / ts.length : 0};
+}
+function renderAccounts() {
+  const cards = $('#acctCards'); cards.replaceChildren();
+  const sel = $('#f-acct'), perf = $('#perfAcct'); const keepSel = sel.value, keepPerf = perf.value;
+  sel.replaceChildren(...ACCTS.map(a => new Option(a.name, a.id)));
+  perf.replaceChildren(new Option('All accounts', 'all'), ...ACCTS.map(a => new Option(a.name, a.id)));
+  if (keepSel && ACCTS.some(a => a.id === keepSel)) sel.value = keepSel;
+  perf.value = [...perf.options].some(o => o.value === keepPerf) ? keepPerf : 'all';
+  if (!ACCTS.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No accounts yet. Add one under "Add an account" to start logging trades.'; cards.append(e); }
+  const today = new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+  ACCTS.forEach(a => {
+    const ts = TRADES.filter(t => t.account === a.id), s = stats(ts);
+    const pnl = (a.start || 0) + s.net, todayPnl = ts.filter(t => t.date === today).reduce((x, t) => x + t.pnl, 0);
+    const c = document.createElement('div'); c.className = 'card';
+    const head = document.createElement('div'); head.className = 'acct';
+    const h = document.createElement('h3'); h.textContent = a.name;
+    head.append(h, pill(a.type || 'Account'));
+    const big = document.createElement('div'); big.className = 'num ' + (pnl >= 0 ? 'pos' : 'neg'); big.style.fontSize = '1.6rem'; big.style.fontFamily = 'var(--display)'; big.style.fontWeight = '600'; big.textContent = fmtUSD(pnl);
+    const line = document.createElement('div'); line.className = 'small muted num';
+    line.textContent = `${s.n} trades · ${s.win === null ? '—' : s.win + '% win'} · avg win ${fmtUSD(s.avgW)} · avg loss ${fmtUSD(s.avgL)} · PF ${s.pf === null ? '—' : s.pf.toFixed(2)}`;
+    c.append(head, big, line);
+    if (a.target > 0) {
+      const p = Math.max(0, Math.min(100, 100 * pnl / a.target));
+      const lab = document.createElement('div'); lab.className = 'small muted'; lab.style.marginTop = '8px'; lab.textContent = `Target ${fmtUSD(a.target)} · ${Math.round(p)}%`;
+      const bar = document.createElement('div'); bar.className = 'bar'; const sp = document.createElement('span'); sp.style.width = p + '%'; sp.style.background = 'var(--bull)'; bar.append(sp);
+      c.append(lab, bar);
+    }
+    if (a.dd > 0) {
+      let peak = a.start || 0, run = a.start || 0;
+      [...ts].sort((x, y) => (x.date + (x.time || '')).localeCompare(y.date + (y.time || ''))).forEach(t => { run += t.pnl; peak = Math.max(peak, run); });
+      const used = Math.max(0, peak - run), p = Math.min(100, 100 * used / a.dd);
+      const lab = document.createElement('div'); lab.className = 'small muted'; lab.style.marginTop = '8px'; lab.textContent = `Drawdown from peak ${fmtUSD(used)} of ${fmtUSD(a.dd)}`;
+      const bar = document.createElement('div'); bar.className = 'bar'; const sp = document.createElement('span'); sp.style.width = p + '%'; sp.style.background = p > 66 ? 'var(--bear)' : 'var(--accent)'; bar.append(sp);
+      c.append(lab, bar);
+    }
+    if (a.daily > 0) {
+      const lab = document.createElement('div'); lab.className = 'small ' + (todayPnl <= -a.daily ? 'neg' : 'muted'); lab.style.marginTop = '8px';
+      lab.textContent = todayPnl <= -a.daily ? `Daily loss limit hit today (${fmtUSD(todayPnl)}). Done for the day.` : `Today ${fmtUSD(todayPnl)} · daily limit ${fmtUSD(-a.daily)}`;
+      c.append(lab);
+    }
+    cards.append(c);
+  });
+  const group = (key, order) => order.map(k => { const ts = TRADES.filter(t => key(t) === k); const s = stats(ts); return {k, ...s}; }).filter(r => r.n > 0);
+  fillTable('#t-bysetup', group(t => t.setup, ['A-setup', 'Standard', 'Deviation', 'Untagged']), r => [[r.k], [r.n, 'num'], [r.win === null ? null : r.win + '%', 'num'], [fmtUSD(r.net), 'num ' + (r.net >= 0 ? 'pos' : 'neg')], [fmtUSD(r.avg), 'num']]);
+  fillTable('#t-bynews', group(t => newsFor(t.date) ? 'News day' : 'Normal day', ['Normal day', 'News day']), r => [[r.k], [r.n, 'num'], [r.win === null ? null : r.win + '%', 'num'], [fmtUSD(r.net), 'num ' + (r.net >= 0 ? 'pos' : 'neg')], [fmtUSD(r.avg), 'num']]);
+  const sorted = [...TRADES].sort((x, y) => (y.date + (y.time || '')).localeCompare(x.date + (x.time || '')));
+  const tb = $('#t-trades tbody'); tb.replaceChildren();
+  if (!sorted.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 13; td.className = 'muted'; td.textContent = 'No trades logged yet.'; tr.append(td); tb.append(tr); }
+  sorted.forEach(t => {
+    const tr = document.createElement('tr');
+    const cells = [[t.date + (t.time ? ' ' + t.time : '')], [acctName(t.account)], [t.side], [t.qty + ' ' + t.sym, 'num'], [t.entry, 'num'], [t.exit, 'num'], [t.stop, 'num'], [fmtUSD(t.pnl), 'num ' + (t.pnl >= 0 ? 'pos' : 'neg')], [t.setup], [t.plan === 'no' ? pill('Off plan', 'bear') : t.plan === 'yes' ? 'Yes' : ''], [newsFor(t.date) ? pill(newsFor(t.date), 'warn') : ''], [t.notes]];
+    cells.forEach(([v, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; if (v instanceof Node) td.append(v); else td.textContent = v === null || v === undefined || v === '' ? '—' : v; if (cls === undefined && typeof v === 'string' && v.length > 40) { td.style.whiteSpace = 'normal'; td.style.minWidth = '220px'; } tr.append(td); });
+    const td = document.createElement('td');
+    if (canWrite) {
+      const del = document.createElement('button'); del.className = 'btn ghost small'; del.type = 'button'; del.textContent = 'Delete';
+      del.addEventListener('click', async () => {
+        if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Confirm'; setTimeout(() => { del.dataset.armed = ''; del.textContent = 'Delete'; }, 3000); return; }
+        del.disabled = true; try { await deleteTrade(t); } catch (e) { del.disabled = false; $('#formStatus').textContent = 'Could not delete that trade. Try again.'; }
+      });
+      td.append(del);
+    }
+    tr.append(td); tb.append(tr);
+  });
+  drawEquity();
+}
+function drawEquity() {
+  const el = $('#c-equity'); if (!el || $('#accounts').hidden) return; el.replaceChildren();
+  const pick = $('#perfAcct').value;
+  const ts = [...TRADES].filter(t => pick === 'all' || t.account === pick).sort((x, y) => (x.date + (x.time || '')).localeCompare(y.date + (y.time || '')));
+  if (!ts.length) { const d = document.createElement('div'); d.className = 'empty'; d.textContent = 'Your running P&L draws here once you log trades.'; el.append(d); return; }
+  let run = 0; const pts = [{i: 0, v: 0, d: ''}]; ts.forEach((t, i) => { run += t.pnl; pts.push({i: i + 1, v: run, d: t.date}); });
+  const W = Math.max(280, el.clientWidth), H = 180, pl = 64, pr = 12, pt = 10, pb = 22;
+  const lo = Math.min(0, ...pts.map(p => p.v)), hi = Math.max(0, ...pts.map(p => p.v)), span = hi - lo || 1;
+  const X = i => pl + (i / Math.max(1, pts.length - 1)) * (W - pl - pr), Y = v => pt + (1 - (v - lo) / span) * (H - pt - pb);
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+  const mk = (n, a) => { const e = document.createElementNS(NS, n); Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v)); svg.append(e); return e; };
+  [lo, 0, hi].filter((v, i, a) => a.indexOf(v) === i).forEach(v => { mk('line', {x1: pl, x2: W - pr, y1: Y(v), y2: Y(v), stroke: css('--line'), 'stroke-dasharray': v === 0 ? '' : '2 3'}); const t = mk('text', {x: pl - 6, y: Y(v), dy: '0.35em', 'text-anchor': 'end', 'font-size': 11, 'font-family': css('--mono'), fill: css('--muted')}); t.textContent = fmtUSD(v); });
+  const d = pts.map((p, k) => (k ? 'L' : 'M') + X(p.i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const col = run >= 0 ? css('--bull') : css('--bear');
+  mk('path', {d: d + ` L ${X(pts.length - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`, fill: col, 'fill-opacity': 0.1, stroke: 'none'});
+  mk('path', {d, fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'});
+  mk('circle', {cx: X(pts.length - 1), cy: Y(run), r: 4, fill: col});
+  const e = mk('text', {x: X(pts.length - 1) - 6, y: Y(run) - 8, 'text-anchor': 'end', 'font-size': 12, 'font-family': css('--mono'), fill: col}); e.textContent = fmtUSD(run);
+  const f = mk('text', {x: pl, y: H - 4, 'font-size': 11, fill: css('--muted')}); f.textContent = `${ts.length} trades · ${ts[0].date} → ${ts[ts.length - 1].date}`;
+  el.append(svg);
+}
+$('#perfAcct').addEventListener('change', drawEquity);
+
+/* form helpers */
+function autoPnl() {
+  const e = parseFloat($('#f-entry').value), x = parseFloat($('#f-exit').value), q = parseInt($('#f-qty').value, 10);
+  if (isNaN(e) || isNaN(x) || isNaN(q)) return;
+  const pv = $('#f-sym').value === 'NQ' ? 20 : 2, dir = $('#f-side').value === 'Long' ? 1 : -1, fees = parseFloat($('#f-fees').value) || 0;
+  $('#f-pnl').value = ((x - e) * dir * q * pv - fees).toFixed(2);
+}
+['#f-entry', '#f-exit', '#f-qty', '#f-sym', '#f-side', '#f-fees'].forEach(s => $(s).addEventListener('input', autoPnl));
+$('#f-date').value = new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+
+$('#tradeForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!IDB) { $('#formStatus').textContent = 'This browser blocked local storage, so trades cannot be saved here.'; return; }
+  const a = ACCTS_RAW.find(x => String(x.id) === $('#f-acct').value);
+  if (!a) { $('#formStatus').textContent = 'Add an account first, then log the trade.'; return; }
+  const num = s => { const v = parseFloat($(s).value); return isNaN(v) ? null : v; };
+  const pnl = num('#f-pnl');
+  if (pnl === null) { $('#formStatus').textContent = 'Enter the net P&L, or both entry and exit prices so it fills in.'; return; }
+  const date = $('#f-date').value, time = $('#f-time').value || '';
+  const ts = new Date(date + 'T' + (time || '12:00') + ':00').getTime();
+  const qty = parseInt($('#f-qty').value, 10) || 1, sym = $('#f-sym').value;
+  META.nextTradeId = META.nextTradeId || 100;
+  const t = {id: 't' + (META.nextTradeId++), win: pnl > 0, pnl: Math.round(pnl * 100) / 100, contracts: qty + ' ' + sym, ts, phase: '', tags: [],
+    date, time, sym, side: $('#f-side').value, qty, entry: num('#f-entry'), exit: num('#f-exit'), stop: num('#f-stop'), fees: num('#f-fees'),
+    setup: $('#f-setup').value, plan: $('#f-plan').value, notes: $('#f-notes').value.trim()};
+  a.trades = a.trades || []; a.trades.push(t);
+  a.totalPnl = Math.round((a.totalPnl || 0) + t.pnl);
+  if (date === nyDate(Date.now())) a.dailyPnl = Math.round((a.dailyPnl || 0) + t.pnl);
+  a.consecutiveLosses = t.win ? 0 : (a.consecutiveLosses || 0) + 1;
+  $('#saveTrade').disabled = true;
+  try {
+    await saveStore(); project();
+    $('#formStatus').textContent = `Saved: ${t.side} ${qty} ${sym}, ${fmtUSD(t.pnl)}.`;
+    ['#f-entry', '#f-exit', '#f-stop', '#f-pnl', '#f-notes', '#f-time'].forEach(s => { $(s).value = ''; });
+  } catch (e) { a.trades.pop(); $('#formStatus').textContent = 'Could not save the trade in this browser. Try again.'; }
+  finally { $('#saveTrade').disabled = false; }
+});
+$('#acctForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!IDB) { $('#acctStatus').textContent = 'This browser blocked local storage.'; return; }
+  const name = $('#a-name').value.trim(); if (!name) return;
+  const nextId = Math.max(META.nextId || 1, ...ACCTS_RAW.map(x => Number(x.id) + 1 || 1));
+  ACCTS_RAW.push({id: nextId, name, type: $('#a-type').value, balance: parseFloat($('#a-start').value) || 0, profitTarget: parseFloat($('#a-target').value) || 0,
+    maxDrawdown: parseFloat($('#a-dd').value) || 0, dailyLimit: parseFloat($('#a-daily').value) || 0, totalPnl: 0, dailyPnl: 0, tradingDays: 1, consecutiveLosses: 0, trades: []});
+  META.nextId = nextId + 1;
+  try { await saveStore(); project(); $('#acctStatus').textContent = `Added ${name}.`; $('#a-name').value = ''; }
+  catch (e) { ACCTS_RAW.pop(); $('#acctStatus').textContent = 'Could not add the account. Try again.'; }
+});
+$('#bkBtn').addEventListener('click', () => {
+  const data = {version: '5.0', exportDate: new Date().toISOString().split('T')[0], accounts: ACCTS_RAW, bundles: BUNDLES, tags: TAGS,
+    meta: {sel: META.sel, nextId: META.nextId, nextBundleId: META.nextBundleId, nextTagId: META.nextTagId, nextTradeId: META.nextTradeId}};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}));
+  const lk = document.createElement('a'); lk.href = url; lk.download = 'ict-trading-backup-' + data.exportDate + '.json'; lk.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+$('#rsFile').addEventListener('change', (ev) => {
+  const f = ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try {
+      const d = JSON.parse(r.result); if (!Array.isArray(d.accounts)) throw new Error('no accounts');
+      ACCTS_RAW = d.accounts; BUNDLES = d.bundles || []; TAGS = d.tags || []; META = {...META, ...(d.meta || {})};
+      if (IDB) await saveStore(); project();
+      $('#dbStatus').textContent = `Restored ${ACCTS_RAW.length} accounts and ${TRADES.length} trades from ${f.name}.`;
+    } catch (e) { $('#dbStatus').textContent = `${f.name} isn't a backup from this page or the Account Dashboard.`; }
+    ev.target.value = '';
+  };
+  r.readAsText(f);
+});
+
+/* ---------- trade log: shared IndexedDB store with the Account Dashboard ---------- */
+let IDB = null, ACCTS_RAW = [], META = {}, BUNDLES = [], TAGS = [];
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('ICT_Dashboard_v2', 1);
+    req.onupgradeneeded = e => { const d = e.target.result; if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv'); };
+    req.onsuccess = e => res(e.target.result); req.onerror = () => rej(req.error);
+  });
+}
+const idbGet = k => new Promise(res => { const r = IDB.transaction('kv', 'readonly').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); });
+const idbSet = (k, v) => new Promise((res, rej) => { const tx = IDB.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+const nyDate = ts => new Date(ts).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+const typeLabel = t => ({eval: 'Prop eval', funded: 'Funded', paper: 'Paper', live: 'Live'})[t] || t || 'Account';
+
+async function loadStore() {
+  let a = null, m = null;
+  try { a = await idbGet('accounts'); m = await idbGet('meta'); } catch (e) {}
+  if (!a) { try { const bk = JSON.parse(localStorage.getItem('ict-bk') || 'null'); if (bk) { a = bk.a; m = bk.m; } } catch (e) {} }
+  ACCTS_RAW = Array.isArray(a) ? a : []; META = m || {}; BUNDLES = META.bundles || []; TAGS = META.tags || [];
+  project();
+}
+async function saveStore() {
+  const meta = {...META, bundles: BUNDLES, tags: TAGS};
+  await idbSet('accounts', ACCTS_RAW); await idbSet('meta', meta);
+  try { localStorage.setItem('ict-bk', JSON.stringify({a: ACCTS_RAW, m: meta})); } catch (e) {}
+}
+// map the dashboard's records into the shape this page draws
+function project() {
+  ACCTS = ACCTS_RAW.map(x => {
+    const tradeSum = (x.trades || []).reduce((s, t) => s + (t.pnl || 0), 0);
+    return {id: String(x.id), name: x.name, type: typeLabel(x.type), start: Math.round((x.totalPnl || 0) - tradeSum),
+            target: x.profitTarget || 0, dd: x.maxDrawdown || 0, daily: x.dailyLimit || 0, created: ''};
+  });
+  TRADES = [];
+  ACCTS_RAW.forEach(x => (x.trades || []).forEach(t => {
+    TRADES.push({id: String(x.id) + ':' + t.id, rawId: t.id, account: String(x.id), date: t.date || (t.ts ? nyDate(t.ts) : ''), time: t.time || '',
+      sym: t.sym || '', side: t.side || '', qty: t.qty || t.contracts || '', entry: t.entry ?? null, exit: t.exit ?? null, stop: t.stop ?? null,
+      pnl: typeof t.pnl === 'number' ? t.pnl : 0, setup: t.setup || 'Untagged', plan: t.plan || '', notes: t.notes || ''});
+  }));
+  renderAccounts();
+}
+async function deleteTrade(t) {
+  const a = ACCTS_RAW.find(x => String(x.id) === t.account); if (!a) return;
+  const i = a.trades.findIndex(x => x.id === t.rawId); if (i < 0) return;
+  const [gone] = a.trades.splice(i, 1);
+  a.totalPnl = Math.round((a.totalPnl || 0) - gone.pnl);
+  if (gone.ts && nyDate(gone.ts) === nyDate(Date.now())) a.dailyPnl = Math.round((a.dailyPnl || 0) - gone.pnl);
+  await saveStore(); project();
+}
+async function connectDb() {
+  try { IDB = await idbOpen(); } catch (e) { $('#dbStatus').textContent = 'This browser blocked local storage, so trades can only be viewed from a restored backup.'; }
+  await loadStore();
+  $('#dbStatus').textContent = ACCTS_RAW.length ? `${ACCTS_RAW.length} accounts · ${TRADES.length} trades in this browser.` : 'No accounts in this browser yet. Add one below, or restore a backup.';
+  // pick up changes made in the dashboard tab
+  window.addEventListener('focus', () => { if (IDB) loadStore(); });
+}
+
+function redraw() { drawStudy(); drawEquity(); }
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 150); });
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw); } catch (e) {}
+new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+
+(async () => {
+  let start = 'study'; try { const s = localStorage.getItem('nqdesk-tab'); if (s && $('#' + s)) start = s; } catch (e) {}
+  if (/^#(study|news|exec|accounts)$/.test(location.hash)) start = location.hash.slice(1);
+  try {
+    const r = await fetch('study.json', {cache: 'no-store'});
+    STUDY = await r.json(); renderStudyStatic();
+  } catch (e) { $('#meta').textContent = 'Study data did not load. Reload the page.'; }
+  showTab(start);
+  connectDb();
+})();
+</script>
+
+</body>
+</html>
