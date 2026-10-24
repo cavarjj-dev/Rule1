@@ -84,6 +84,15 @@ textarea{min-height:52px;resize:vertical}
 .status{font-size:.82rem;min-height:1.2em;color:var(--muted)}
 .empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
 @media (prefers-reduced-motion: no-preference){.panel{animation:fade .25s ease-out}}
+.setup .row1{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.setup .big{font-family:var(--display);font-size:2rem;font-weight:600;line-height:1}
+.setup dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0;font-size:.84rem}
+.setup dt{color:var(--muted)} .setup dd{margin:0;font-variant-numeric:tabular-nums}
+.setup .use{font-size:.86rem;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.dots{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.dot{width:12px;height:12px;border-radius:50%;border:1px solid var(--line)}
+.dot.y{background:var(--bull);border-color:var(--bull)} .dot.n{background:var(--bear);border-color:var(--bear)}
+.pill.grade-A{color:var(--bull);border-color:currentColor} .pill.grade-B{color:var(--info);border-color:currentColor}
 @keyframes fade{from{opacity:.4}to{opacity:1}}
 </style>
 </head>
@@ -107,6 +116,7 @@ textarea{min-height:52px;resize:vertical}
 
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="tab-study" aria-selected="true" data-tab="study">Study</button>
+    <button role="tab" id="tab-setups" aria-selected="false" data-tab="setups">Setups</button>
     <button role="tab" id="tab-news" aria-selected="false" data-tab="news">News days</button>
     <button role="tab" id="tab-exec" aria-selected="false" data-tab="exec">Execution</button>
     <button role="tab" id="tab-accounts" aria-selected="false" data-tab="accounts">Accounts</button>
@@ -135,6 +145,14 @@ textarea{min-height:52px;resize:vertical}
     <div class="card"><p class="note">Measured from the moment the tell is visible to the NY close. Near 50% means a coin flip.</p><div id="c-tells"></div></div>
     <h2 id="data-updates">Data</h2>
     <div class="card"><p class="note" style="max-width:75ch">The study refreshes every Saturday from the TradingView exports you upload on the Claude version of this page (Update data section). Each refresh commits a new <span class="mono">study.json</span> to this repository, so the history of every refresh is kept in the repo's commits.</p></div>
+  </section>
+
+  <!-- SETUPS -->
+  <section class="panel" id="setups" hidden>
+    <h2>Setup playbook</h2>
+    <p class="lede" style="margin-bottom:14px">Every rule is read before the open and stated relative to the 4H bias, so a bearish day with the London high swept and a bullish day with the London low swept are the same setup. Hit rates are from the hourly year; the 15M check, target distance and heat are from the 15M sample with the 9:30 open.</p>
+    <div id="setupCards" class="grid"></div>
+    <div class="alert" id="setupNote"><b>How these were found:</b> about 2,500 combinations of pre-open conditions and targets were tested. A rule is listed only if it beats the baseline by 10 points, holds in both halves of the year, and agrees with the 15M sample. Testing that many combinations flatters the winners, so expect live hit rates a few points lower and keep tagging trades by setup.</div>
   </section>
 
   <!-- NEWS -->
@@ -241,12 +259,12 @@ let STUDY = null, NEWS_BY_DATE = {};
 /* ---------- tabs ---------- */
 function showTab(name) {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-  ['study', 'news', 'exec', 'accounts'].forEach(id => { $('#' + id).hidden = id !== name; });
+  ['study', 'setups', 'news', 'exec', 'accounts'].forEach(id => { $('#' + id).hidden = id !== name; });
   try { localStorage.setItem('nqdesk-tab', name); } catch (e) {}
   redraw();
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['study', 'news', 'exec', 'accounts'].includes(h)) showTab(h); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['study', 'setups', 'news', 'exec', 'accounts'].includes(h)) showTab(h); });
 
 /* ---------- bar chart ---------- */
 function legend(el, items) {
@@ -331,12 +349,44 @@ function renderStudyStatic() {
   fillTable('#t-entries', S.tables.entries, r => [[r.key], [r.trades, 'num'], [r.fill_pct, 'num'], [r.win_pct_2R, 'num'], [r.avg_R_2R, 'num'], [r.avg_R_3R, 'num'], [r.median_risk_pts, 'num']]);
   fillTable('#t-setups', S.tables.setup_log, r => [[r.day], [r.side], [r.mss, 'mono'], [r.stop_pts, 'num'], [r.news === 'None' ? '' : pill(r.news, 'warn')], [r.result], [r.R === null ? null : (r.R > 0 ? '+' : '') + r.R, 'num ' + (r.R > 0 ? 'pos' : r.R < 0 ? 'neg' : '')]]);
   fillTable('#t-nested', S.tables.nested, r => [[r.day], [r.side], [r.result], [r.stop1, 'num'], [r.R1, 'num']]);
+  renderSetups();
   NEWS_BY_DATE = {}; (S.news.calendar || []).forEach(e => { NEWS_BY_DATE[e.date] = NEWS_BY_DATE[e.date] ? NEWS_BY_DATE[e.date] + ' + ' + e.event : e.event; });
   const today = new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
   const next = S.news.upcoming[0];
   const box = $('#newsAlert');
   if (NEWS_BY_DATE[today]) { box.hidden = false; box.className = 'alert'; box.textContent = `Today is a ${NEWS_BY_DATE[today]} day. The A-setup's edge mostly disappears on data mornings; wait for the 5M structure shift, and stand aside before a 2:00 PM FOMC release.`; }
   else if (next) { box.hidden = false; box.className = 'alert'; box.textContent = `Next scheduled release: ${next.event} on ${new Date(next.date + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'long', month: 'short', day: 'numeric'})} at ${next.time} ET.`; }
+}
+
+
+function renderSetups() {
+  const box = $('#setupCards'); box.replaceChildren();
+  const rules = (STUDY && STUDY.setups && STUDY.setups.rules) || [];
+  if (!rules.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'Setups appear after the next refresh.'; box.append(e); return; }
+  const add = (el, tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; el.append(n); return n; };
+  const pctTxt = v => v === null || v === undefined ? '—' : v + '%';
+  rules.forEach(r => {
+    const c = add(box, 'div', 'card setup'); c.id = 'setup-' + r.code;
+    const top = add(c, 'div', 'row1');
+    const t = add(top, 'div'); add(t, 'h3', '', r.code + ' · ' + r.name);
+    add(top, 'span', 'pill grade-' + r.grade, r.grade === 'A' || r.grade === 'B' ? r.grade + ' setup' : r.grade);
+    add(c, 'p', 'note', r.condition);
+    const big = add(c, 'div', 'row1');
+    add(big, 'span', 'big num', pctTxt(r.pct));
+    add(big, 'span', 'small muted', `reached ${r.target.charAt(0).toLowerCase() + r.target.slice(1)} · ${r.n} days`);
+    const dl = add(c, 'dl');
+    [['Each half of the year', `${pctTxt(r.first_half)} / ${pctTxt(r.second_half)}`],
+     ['15M sample', `${pctTxt(r.pct15)} of ${r.n15} days`],
+     ['Target from the open', r.dist_med === null ? '—' : `~${r.dist_med} pts (median)`],
+     ['Heat before it hit', r.heat_med === null ? '—' : `~${r.heat_med} pts (median)`],
+     ['Hit by 10:30', pctTxt(r.by_1030)]].forEach(([k, v]) => { add(dl, 'dt', '', k); add(dl, 'dd', '', v); });
+    add(c, 'div', 'use', r.use);
+    if (r.recent && r.recent.length) {
+      add(c, 'div', 'small muted', 'Latest days, newest first').style.marginTop = '8px';
+      const dots = add(c, 'div', 'dots');
+      r.recent.forEach(x => { const d = add(dots, 'span', 'dot ' + (x.hit ? 'y' : 'n')); d.title = `${x.day}: ${x.hit ? 'hit at ' + x.time : 'not reached'}${x.news !== 'Normal day' ? ' · ' + x.news : ''}`; d.setAttribute('aria-label', d.title); });
+    }
+  });
 }
 
 /* ---------- accounts & trades (db) ---------- */
@@ -569,7 +619,7 @@ new MutationObserver(redraw).observe(document.documentElement, {attributes: true
 
 (async () => {
   let start = 'study'; try { const s = localStorage.getItem('nqdesk-tab'); if (s && $('#' + s)) start = s; } catch (e) {}
-  if (/^#(study|news|exec|accounts)$/.test(location.hash)) start = location.hash.slice(1);
+  if (/^#(study|setups|news|exec|accounts)$/.test(location.hash)) start = location.hash.slice(1);
   try {
     const r = await fetch('study.json', {cache: 'no-store'});
     STUDY = await r.json(); renderStudyStatic();
