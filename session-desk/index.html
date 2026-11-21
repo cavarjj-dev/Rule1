@@ -93,6 +93,14 @@ textarea{min-height:52px;resize:vertical}
 .dot{width:12px;height:12px;border-radius:50%;border:1px solid var(--line)}
 .dot.y{background:var(--bull);border-color:var(--bull)} .dot.n{background:var(--bear);border-color:var(--bear)}
 .pill.grade-A{color:var(--bull);border-color:currentColor} .pill.grade-B{color:var(--info);border-color:currentColor}
+.pro-phase{font-family:var(--display);font-size:1.9rem;font-weight:600;line-height:1.1}
+.pro-plain{margin:6px 0 0;font-size:1rem;max-width:70ch}
+.pro-hero .strip{margin-top:14px}
+.pro-hero .strip .v{font-size:1.35rem}
+.pro-rules li{margin-bottom:6px}
+.pro-gloss{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:.86rem}
+.pro-gloss dt{font-weight:600} .pro-gloss dd{margin:0;color:var(--muted)}
+details.card summary{cursor:pointer}
 @keyframes fade{from{opacity:.4}to{opacity:1}}
 </style>
 </head>
@@ -191,6 +199,47 @@ textarea{min-height:52px;resize:vertical}
     <div class="acct" style="margin-top:10px"><div class="status" id="dbStatus">Opening your trade log…</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small" type="button" id="bkBtn">Download backup</button><label class="btn ghost small" for="rsFile" style="flex-direction:row;color:var(--ink)">Restore backup<input type="file" id="rsFile" accept=".json,application/json" hidden></label></div></div>
     <p class="note small">Trades are saved in this browser, in the same store as your Account Dashboard, so both pages show one journal. Nothing you log here is committed to GitHub. Download a backup after each session.</p>
+    <!-- PRO PLAN -->
+    <div id="proWrap" hidden>
+    <h2>PRO account plan</h2>
+    <div class="card pro-hero" id="proHero"></div>
+    <div class="grid" style="margin-top:14px">
+      <div class="card"><h3>Your rules right now</h3><ul class="rules pro-rules" id="proRules"></ul></div>
+      <div class="card"><h3>Friday payout check</h3><div id="proPay"></div></div>
+    </div>
+    <h2>Pace</h2>
+    <div class="card">
+      <div class="acct"><h3 id="proPaceTitle">Your pace vs the plan</h3><span id="proPacePill"></span></div>
+      <p class="note" id="proPaceNote"></p>
+      <div class="legend" id="lg-pace"></div>
+      <div id="c-pace" style="min-height:220px;position:relative"></div>
+      <div class="tbox" style="margin-top:12px"><table id="t-pace"><thead><tr><th>Phase</th><th>Done when</th><th class="num">Plan pace</th><th class="num">Strong pace</th><th class="num">Plan time</th><th class="num">Your pace</th></tr></thead><tbody></tbody></table></div>
+      <p class="note small" style="margin-top:8px">Plan pace = 45% wins, strong = 50% wins, both at 4 trades a week, 2R targets and the plan's size. The speed limit is 60% wins at 5 trades a week: going faster than that almost always means trading bigger or more often than the plan. "Profit made" counts money you've withdrawn, so payouts never look like going backward.</p>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="card"><h3>Staying on plan</h3><div id="proChecks"></div></div>
+      <div class="card"><h3>Words on this page</h3><dl class="pro-gloss">
+        <dt>Floor</dt><dd>If your balance touches it, the account is gone. It starts at $48,000 and rises with your best balance (open profit counts) until it stops at $50,000.</dd>
+        <dt>Cushion</dt><dd>Balance minus floor. The room you have to be wrong.</dd>
+        <dt>Lock</dt><dd>When your balance peaks at $52,000, the floor stops at $50,000 for good.</dd>
+        <dt>Buffer</dt><dd>You can only withdraw money above $52,000. You keep 80% of what you withdraw.</dd>
+        <dt>R</dt><dd>One unit of risk: what you lose if the stop is hit. At 2 MNQ and a 40-pt stop, 1R = $160.</dd>
+      </dl></div>
+    </div>
+    <details class="card" style="margin-top:14px" id="proSetup"><summary><b>PRO settings</b> <span class="muted small">— which account, start date, the floor from TPT</span></summary>
+      <form id="proForm" style="margin-top:12px">
+        <div class="row">
+          <label for="p-acct">PRO account<select id="p-acct"></select></label>
+          <label for="p-startdate">Plan start date<input type="date" id="p-startdate"></label>
+          <label for="p-thr">Floor from TPT ($)<input type="number" id="p-thr" step="1" placeholder="e.g. 48000"></label>
+          <label for="p-tpw">Trades per week (plan)<input type="number" id="p-tpw" min="1" max="10" step="1" value="4"></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" type="submit">Save settings</button><span class="status" id="proStatus"></span></div>
+        <p class="note small">TPT's floor counts open profit, which this page can't see, so the page estimates it from closed trades. When TPT shows a different "liquidation threshold", type it here; leave blank to use the estimate.</p>
+      </form>
+    </details>
+    </div>
+
     <h2>Accounts</h2>
     <div id="acctCards" class="grid"><div class="empty">Your accounts appear here. Add one below to start logging trades.</div></div>
     <h2>Performance</h2>
@@ -462,6 +511,7 @@ function renderAccounts() {
     tr.append(td); tb.append(tr);
   });
   drawEquity();
+  if (PRO_READY) renderPro();
 }
 function drawEquity() {
   const el = $('#c-equity'); if (!el || $('#accounts').hidden) return; el.replaceChildren();
@@ -536,7 +586,7 @@ $('#acctForm').addEventListener('submit', async (ev) => {
 });
 $('#bkBtn').addEventListener('click', () => {
   const data = {version: '5.0', exportDate: new Date().toISOString().split('T')[0], accounts: ACCTS_RAW, bundles: BUNDLES, tags: TAGS,
-    meta: {sel: META.sel, nextId: META.nextId, nextBundleId: META.nextBundleId, nextTagId: META.nextTagId, nextTradeId: META.nextTradeId}};
+    meta: {sel: META.sel, nextId: META.nextId, nextBundleId: META.nextBundleId, nextTagId: META.nextTagId, nextTradeId: META.nextTradeId}, pro: {settings: PRO.settings, payouts: PRO.payouts}};
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}));
   const lk = document.createElement('a'); lk.href = url; lk.download = 'ict-trading-backup-' + data.exportDate + '.json'; lk.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
@@ -547,12 +597,294 @@ $('#rsFile').addEventListener('change', (ev) => {
     try {
       const d = JSON.parse(r.result); if (!Array.isArray(d.accounts)) throw new Error('no accounts');
       ACCTS_RAW = d.accounts; BUNDLES = d.bundles || []; TAGS = d.tags || []; META = {...META, ...(d.meta || {})};
+      if (d.pro) { PRO.settings = d.pro.settings || null; PRO.payouts = d.pro.payouts || []; await proSave(); }
       if (IDB) await saveStore(); project();
       $('#dbStatus').textContent = `Restored ${ACCTS_RAW.length} accounts and ${TRADES.length} trades from ${f.name}.`;
     } catch (e) { $('#dbStatus').textContent = `${f.name} isn't a backup from this page or the Account Dashboard.`; }
     ev.target.value = '';
   };
   r.readAsText(f);
+});
+
+let PRO_READY = false;
+// PRO settings and payouts get their own key in the shared store, so the Account Dashboard's saves never overwrite them.
+async function proLoad() { let v = null; try { if (IDB) v = await idbGet('pro'); } catch (e) {} if (!v) { try { v = JSON.parse(localStorage.getItem('nqdesk-pro') || 'null'); } catch (e) {} } PRO.settings = (v && v.settings) || null; PRO.payouts = (v && v.payouts) || []; PRO_READY = true; }
+async function proSave() { const v = {settings: PRO.settings, payouts: PRO.payouts}; if (IDB) await idbSet('pro', v); try { localStorage.setItem('nqdesk-pro', JSON.stringify(v)); } catch (e) {} renderPro(); }
+const PRO_STORE = {
+  async saveSettings(s) { PRO.settings = s; await proSave(); },
+  async addPayout(p) { PRO.payouts = [...PRO.payouts, {...p, id: 'p' + Date.now()}]; await proSave(); },
+  async deletePayout(p) { PRO.payouts = PRO.payouts.filter(x => x.id !== p.id); await proSave(); }
+};
+
+/* ---------- PRO account plan (TPT $50K PRO playbook) ---------- */
+// Settings + payouts live in PRO; PRO_STORE (defined per version) saves them.
+let PRO = {settings: null, payouts: []};
+const PRO_DEF = {account: '', startBal: 50000, maxDD: 2000, startDate: '', threshold: null, tpw: 4, split: 0.8, keep1: 53000, keep2: 55000};
+const proCfg = () => ({...PRO_DEF, ...(PRO.settings || {})});
+const nyToday = () => new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+const dayNum = d => Date.parse(d + 'T12:00:00Z') / 864e5;
+function proRisk(cush, locked) {
+  if (!locked) return cush < 1200 ? 80 : 160;
+  return cush < 2500 ? 160 : cush < 4000 ? 240 : cush < 6000 ? 320 : 400;
+}
+const proMnq = (risk, stop) => Math.min(5, Math.floor(risk / ((stop || 40) * 2)));
+// Phase 3: everything above $55,000. Phase 2: half of this week's profit, never taking the balance under $53,000.
+function proPayout(c, bal, locked, weekProfit) {
+  if (!locked) return 0;
+  const amt = bal >= c.keep2 ? bal - c.keep2 : weekProfit > 0 ? Math.min(0.5 * weekProfit, bal - c.keep1) : 0;
+  return amt < 100 ? 0 : Math.floor(amt);
+}
+const weekStart = d => { const t = new Date(d + 'T12:00:00Z'); const dow = t.getUTCDay(); t.setUTCDate(t.getUTCDate() - ((dow + 6) % 7)); return t.toISOString().slice(0, 10); };
+
+// Replay the PRO account's trades and payouts in order.
+function proState() {
+  const c = proCfg(), a = ACCTS.find(x => x.id === c.account);
+  if (!a) return null;
+  const lockAt = c.startBal + c.maxDD;
+  const ev = [];
+  TRADES.filter(t => t.account === a.id).forEach(t => ev.push({k: (t.date || '') + ' ' + (t.time || '00:00'), kind: 't', t}));
+  PRO.payouts.filter(p => p.account === a.id).forEach(p => ev.push({k: (p.date || '') + ' ~', kind: 'p', p}));
+  ev.sort((x, y) => x.k.localeCompare(y.k));
+  let bal = c.startBal + (a.start || 0), peak = bal, locked = false, paid = 0, nT = 0, onSize = 0;
+  const flags = [], byDay = {}, pts = [];
+  const start = c.startDate || (ev[0] ? ev[0].k.slice(0, 10) : nyToday());
+  pts.push({x: 0, y: 0});
+  ev.forEach(e => {
+    const d = e.k.slice(0, 10);
+    if (e.kind === 't') {
+      const t = e.t, floor = locked ? c.startBal : Math.min(c.startBal, peak - c.maxDD), cush = bal - floor;
+      const risk = proRisk(cush, locked), stop = typeof t.stop === 'number' && t.stop > 0 ? t.stop : 40, n = proMnq(risk, stop);
+      const q = parseInt(t.qty, 10) || 0; let ok = true;
+      if (t.sym === 'NQ') { ok = false; flags.push({d, why: 'NQ e-mini used'}); }
+      else if (q > Math.max(1, n)) { ok = false; flags.push({d, why: `${q} MNQ when the plan allowed ${Math.max(1, n)}`}); }
+      if (t.pnl < -1.3 * risk) { ok = false; flags.push({d, why: `loss of ${fmtUSD(-t.pnl)} is more than the ${fmtUSD(risk)} plan risk`}); }
+      if (t.sym !== 'NQ' && q && q <= Math.max(1, n)) onSize++;
+      nT++; byDay[d] = (byDay[d] || 0) + 1;
+      bal += t.pnl; peak = Math.max(peak, bal); if (peak >= lockAt) locked = true;
+    } else { bal -= e.p.amount; paid += e.p.amount; }
+    pts.push({x: Math.max(0, (dayNum(d) - dayNum(start)) / 7), y: bal - c.startBal + paid});
+  });
+  const estFloor = locked ? c.startBal : Math.min(c.startBal, peak - c.maxDD);
+  const hasThr = typeof c.threshold === 'number' && c.threshold > 0;
+  const floor = hasThr ? Math.max(c.threshold, estFloor) : estFloor; // the floor only rises, so the higher number is the safe one
+  if (floor >= c.startBal) locked = true;
+  const cush = bal - floor, risk = proRisk(cush, locked), n = proMnq(risk, 40);
+  const phase = !locked ? 1 : bal < c.keep2 ? 2 : 3;
+  const overDays = Object.entries(byDay).filter(([, k]) => k > 2).map(([d]) => d);
+  const weeksIn = Math.max(0, (dayNum(nyToday()) - dayNum(start)) / 7);
+  const wk0 = weekStart(nyToday());
+  const paidThisWeek = PRO.payouts.filter(p => p.account === a.id && p.date >= wk0).reduce((x, p) => x + p.amount, 0);
+  const weekProfit = TRADES.filter(t => t.account === a.id && t.date >= wk0).reduce((x, t) => x + t.pnl, 0);
+  return {c, a, bal, peak, floor, hasThr, locked, cush, risk, n, phase, paid, earned: bal - c.startBal + paid, pts, nT, onSize, flags, overDays, start, weeksIn, lockAt,
+    weekProfit, paidThisWeek, payout: paidThisWeek > 0 && bal < c.keep2 ? 0 : proPayout(c, bal, locked, weekProfit), defense: !locked && cush < 1200};
+}
+
+// Expected path week by week for a win rate and trades per week, following the plan.
+function proPath(wr, tpw, weeks) {
+  const c = proCfg(); let bal = c.startBal, locked = false, paid = 0, lockW = null, cashW = null;
+  const out = [{x: 0, y: 0, phase: 1}];
+  for (let w = 1; w <= weeks; w++) {
+    const floor = locked ? c.startBal : Math.min(c.startBal, bal - c.maxDD), cush = bal - floor;
+    const risk = proRisk(cush, locked), n = proMnq(risk, 40), R = n * 80;
+    const gain = tpw * (wr * 2 * R - (1 - wr) * R - n * 1.24); bal += gain;
+    if (!locked && bal >= c.startBal + c.maxDD) { locked = true; lockW = lockW || w; }
+    const amt = proPayout(c, bal, locked, gain); bal -= amt; paid += amt;
+    if (locked && bal >= c.keep2 - 1 && cashW === null) cashW = w;
+    out.push({x: w, y: bal - c.startBal + paid, phase: !locked ? 1 : bal < c.keep2 - 1 ? 2 : 3});
+  }
+  return {pts: out, lockW, cashW};
+}
+const interp = (pts, x) => { if (x <= 0) return 0; const i = Math.min(pts.length - 1, Math.floor(x)), j = Math.min(pts.length - 1, i + 1), f = x - i; return pts[i].y + (pts[j].y - pts[i].y) * f; };
+function phaseRate(path, ph) {
+  const seg = path.pts.filter((p, i) => i > 0 && path.pts[i - 1].phase === ph);
+  if (!seg.length) return null;
+  const i0 = path.pts.indexOf(seg[0]) - 1, i1 = path.pts.indexOf(seg[seg.length - 1]);
+  return (path.pts[i1].y - path.pts[i0].y) / (i1 - i0);
+}
+const PHASES = [
+  {n: 1, name: 'Lock the floor', plain: 'Get your balance to $52,000 once. Then the floor stops moving forever.', done: 'Balance peaks at $52,000'},
+  {n: 2, name: 'Build the cushion', plain: 'Grow from $52,000 to $55,000 while taking some money out each Friday.', done: 'Balance reaches $55,000'},
+  {n: 3, name: 'Cash flow', plain: 'Hold the account at $55,000 and take everything above it each Friday.', done: 'Ongoing'}
+];
+
+function renderPro() {
+  const wrap = $('#proWrap'); if (!wrap) return;
+  wrap.hidden = false;
+  const c = proCfg(), sel = $('#p-acct');
+  const keep = sel.value || c.account;
+  sel.replaceChildren(new Option('— choose —', ''), ...ACCTS.map(a => new Option(a.name, a.id)));
+  sel.value = ACCTS.some(a => a.id === keep) ? keep : '';
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#proForm')) { /* don't overwrite while typing */ }
+  else { $('#p-startdate').value = c.startDate || ''; $('#p-thr').value = typeof c.threshold === 'number' ? c.threshold : ''; $('#p-tpw').value = c.tpw; sel.value = ACCTS.some(a => a.id === c.account) ? c.account : ''; }
+  const S = proState();
+  const parts = ['#proRules', '#proPay', '#proChecks'];
+  if (!S) {
+    $('#proHero').replaceChildren(); const p = document.createElement('p'); p.textContent = 'Choose your PRO account in PRO settings below to turn on the phase, pace and payout tracker.'; $('#proHero').append(p);
+    parts.forEach(s => $(s).replaceChildren()); $('#t-pace tbody').replaceChildren(); $('#c-pace').replaceChildren(); $('#proPaceNote').textContent = '';
+    $('#proSetup').open = true; return;
+  }
+  const P = PHASES[S.phase - 1];
+  // hero
+  const hero = $('#proHero'); hero.replaceChildren();
+  const add = (el, tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; el.append(n); return n; };
+  const top = add(hero, 'div', 'acct');
+  const left = add(top, 'div'); add(left, 'div', 'eyebrow', `${S.a.name} · Phase ${S.phase} of 3`);
+  add(left, 'div', 'pro-phase', P.name + (S.defense ? ' · defense mode' : ''));
+  top.append(pill(S.locked ? 'Floor locked at ' + fmtUSD(c.startBal) : 'Floor still moving', S.locked ? 'bull' : 'warn'));
+  add(hero, 'p', 'pro-plain', S.defense ? 'Your cushion is under $1,200. Drop to 1 MNQ and take A-setups only until it is back above $1,600.' : P.plain);
+  let goalFrom, goalTo, goalNow;
+  if (S.phase === 1) { goalFrom = c.startBal; goalTo = S.lockAt; goalNow = S.peak; }
+  else if (S.phase === 2) { goalFrom = S.lockAt; goalTo = c.keep2; goalNow = S.bal; }
+  if (goalTo) {
+    const p = Math.max(0, Math.min(100, 100 * (goalNow - goalFrom) / (goalTo - goalFrom)));
+    add(hero, 'div', 'small muted', `${fmtUSD(Math.max(0, goalTo - goalNow))} to go · ${Math.round(p)}% of this phase`).style.marginTop = '8px';
+    const bar = add(hero, 'div', 'bar'); const sp = add(bar, 'span'); sp.style.width = p + '%'; sp.style.background = 'var(--bull)';
+  }
+  const strip = add(hero, 'div', 'strip');
+  [['Balance', fmtUSD(S.bal)], [S.hasThr && S.floor === S.c.threshold ? 'Floor (from TPT)' : 'Floor (estimate)', fmtUSD(S.floor)], ['Cushion', `${fmtUSD(S.cush)} · ${S.risk > 0 ? Math.floor(S.cush / S.risk) : 0} losses`], ['Size today', S.n > 0 ? `${S.n} MNQ at a 40-pt stop` : 'Skip']]
+    .forEach(([k, v]) => { const d = add(strip, 'div'); add(d, 'div', 'k', k); add(d, 'div', 'v num', v); });
+  // rules in plain words
+  const r1 = S.phase === 1 ? 'Take the whole trade off at TP1. No runners yet: open profit raises the floor.' : 'Take most of the trade at TP1. You may keep 1 MNQ with the stop at breakeven.';
+  const r2 = S.phase === 1 ? 'Goal: touch $52,000. No payouts are possible yet.' : S.phase === 2 ? 'Friday: winning week? Take half of the week\'s profit out, leave half in. Never below $53,000.' : 'Friday: withdraw everything above $55,000.';
+  const rules = [
+    `Size: ${S.n} MNQ when the stop is 40 points (max risk ${fmtUSD(S.risk)}). Wider stop, fewer contracts.`,
+    r1,
+    'Max 2 trades a day. Stop after 2 losses, or after a 2R win.',
+    `Bad week? At ${fmtUSD(-4 * S.risk)} for the week, finish it on sim or replay.`,
+    'No NQ e-minis. No adding to a trade. Flat 1 minute before and after CPI, NFP and FOMC.',
+    r2
+  ];
+  $('#proRules').replaceChildren(...rules.map(t => { const li = document.createElement('li'); li.textContent = t; return li; }));
+  // payouts
+  const pay = $('#proPay'); pay.replaceChildren();
+  const isFri = new Date().toLocaleDateString('en-US', {timeZone: 'America/New_York', weekday: 'short'}) === 'Fri';
+  const big = add(pay, 'div', 'pro-phase num', S.payout > 0 ? fmtUSD(S.payout) : '$0');
+  big.style.color = S.payout > 0 ? 'var(--bull)' : 'var(--muted)';
+  add(pay, 'p', 'note', !S.locked ? 'Nothing to withdraw until the floor locks at $52,000. Every dollar stays in to build the cushion.'
+    : S.payout > 0 ? `${isFri ? 'Today is payout day.' : 'If Friday ended here:'} withdraw ${fmtUSD(S.payout)}; you receive ${fmtUSD(S.payout * c.split)} after the 80/20 split. Suggested split: ${fmtUSD(S.payout * c.split * 0.3)} taxes · ${fmtUSD(S.payout * c.split * 0.1)} trading fund · ${fmtUSD(S.payout * c.split * 0.6)} yours.`
+    : S.paidThisWeek > 0 ? `Already recorded ${fmtUSD(S.paidThisWeek)} this week.`
+    : S.phase === 2 ? (S.weekProfit > 0 ? `This week is up ${fmtUSD(S.weekProfit)}, but half of it would take the balance under ${fmtUSD(c.keep1)}. Leave it in.` : 'No profit this week, so nothing comes out. Half of each winning week comes out; the other half builds the cushion.')
+    : 'Nothing above $55,000 this week.');
+  if (canWrite && S.locked) {
+    const f = add(pay, 'div'); f.style.cssText = 'display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap';
+    const l1 = add(f, 'label', '', 'Date'); const di = add(l1, 'input'); di.type = 'date'; di.value = nyToday();
+    const l2 = add(f, 'label', '', 'Amount withdrawn ($)'); const ai = add(l2, 'input'); ai.type = 'number'; ai.step = '1'; ai.min = '0'; ai.value = S.payout || '';
+    const b = add(f, 'button', 'btn small', 'Record payout'); b.type = 'button';
+    const st = add(pay, 'div', 'status');
+    b.addEventListener('click', async () => {
+      const amt = parseFloat(ai.value); if (!(amt > 0)) { st.textContent = 'Enter the amount you withdrew.'; return; }
+      if (S.bal - amt < c.startBal + c.maxDD) { st.textContent = `That would take the balance under ${fmtUSD(c.startBal + c.maxDD)}, which TPT doesn't allow.`; return; }
+      b.disabled = true; st.textContent = 'Saving…';
+      try { await PRO_STORE.addPayout({account: S.a.id, date: di.value || nyToday(), amount: Math.round(amt * 100) / 100, created: new Date().toISOString()}); st.textContent = `Recorded ${fmtUSD(amt)}.`; }
+      catch (e) { st.textContent = 'Could not save the payout. Try again.'; b.disabled = false; }
+    });
+  }
+  const mine = PRO.payouts.filter(p => p.account === S.a.id).sort((x, y) => y.date.localeCompare(x.date));
+  if (mine.length) {
+    add(pay, 'div', 'small muted', `${mine.length} payout${mine.length === 1 ? '' : 's'} · ${fmtUSD(S.paid)} withdrawn · ${fmtUSD(S.paid * c.split)} to you`).style.marginTop = '10px';
+    const tb = add(add(add(pay, 'div', 'tbox'), 'table'), 'tbody');
+    mine.slice(0, 12).forEach(p => {
+      const tr = add(tb, 'tr'); add(tr, 'td', '', p.date); add(tr, 'td', 'num', fmtUSD(p.amount)); add(tr, 'td', 'num muted', fmtUSD(p.amount * c.split) + ' to you');
+      const td = add(tr, 'td');
+      if (canWrite) { const del = add(td, 'button', 'btn ghost small', 'Delete'); del.type = 'button'; del.addEventListener('click', async () => { if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Confirm'; setTimeout(() => { del.dataset.armed = ''; del.textContent = 'Delete'; }, 3000); return; } del.disabled = true; try { await PRO_STORE.deletePayout(p); } catch (e) { del.disabled = false; } }); }
+    });
+  }
+  // discipline
+  const ch = $('#proChecks'); ch.replaceChildren();
+  if (!S.nT) add(ch, 'p', 'note', 'Checks appear once you log PRO trades: size against the plan, NQ use, oversized losses and days with more than 2 trades.');
+  else {
+    const pct = Math.round(100 * S.onSize / S.nT);
+    const b2 = add(ch, 'div', 'pro-phase num', pct + '%'); b2.style.color = pct >= 90 ? 'var(--bull)' : pct >= 75 ? 'var(--accent)' : 'var(--bear)';
+    add(ch, 'p', 'note', `of ${S.nT} trades were at or under the plan's size. ${S.overDays.length ? S.overDays.length + ' day' + (S.overDays.length === 1 ? '' : 's') + ' with more than 2 trades.' : 'No day over 2 trades.'}`);
+    if (S.flags.length) { const ul = add(ch, 'ul', 'rules small'); S.flags.slice(-6).reverse().forEach(f => add(ul, 'li', '', `${f.d}: ${f.why}`)); }
+  }
+  drawPace(S);
+}
+
+function drawPace(S) {
+  S = S || proState(); const el = $('#c-pace'); if (!el || !S || $('#accounts').hidden) return;
+  el.replaceChildren();
+  const c = proCfg(), tpw = Math.max(1, parseInt(c.tpw, 10) || 4);
+  const horizon = 60, plan = proPath(0.45, tpw, horizon), strong = proPath(0.5, tpw, horizon), fast = proPath(0.6, tpw + 1, horizon);
+  const wNow = S.weeksIn;
+  const xMax = Math.min(52, Math.max(10, Math.ceil(wNow) + 4, (plan.lockW || 8) + 3, S.phase > 1 ? (plan.cashW || 16) + 2 : 0));
+  const actualY = S.earned, planNow = interp(plan.pts, wNow), strongNow = interp(strong.pts, wNow), fastNow = interp(fast.pts, wNow);
+  // status
+  let status, cls;
+  if (wNow < 0.5) { status = 'Starting'; cls = ''; }
+  else if (actualY > fastNow && wNow > 0.3) { status = 'Faster than the speed limit'; cls = 'bear'; }
+  else if (actualY >= strongNow) { status = 'Ahead of pace'; cls = 'bull'; }
+  else if (actualY >= planNow * 0.8) { status = 'On pace'; cls = 'bull'; }
+  else { status = 'Behind pace'; cls = 'warn'; }
+  $('#proPacePill').replaceChildren(pill(status, cls));
+  const wk = Math.floor(wNow) + 1;
+  const msg = {
+    'Starting': `Week 1 ${wNow <= 0 ? 'starts' : 'started'} ${new Date(S.start + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}${S.nT ? ', and you\'ve made ' + fmtUSD(actualY) + ' so far' : ''}. The pace check starts mid-week. The plan line shows where an average trader with your setups would be each week.`,
+    'Faster than the speed limit': `Week ${wk}: you've made ${fmtUSD(actualY)}; the plan says about ${fmtUSD(planNow)}. That's faster than following the size rules usually allows. Check your contract count before the next trade.`,
+    'Ahead of pace': `Week ${wk}: you've made ${fmtUSD(actualY)} vs a plan of ${fmtUSD(planNow)}. Good. Keep the same size; the tiers raise it for you as the cushion grows.`,
+    'On pace': `Week ${wk}: you've made ${fmtUSD(actualY)} vs a plan of ${fmtUSD(planNow)}. Right where you should be.`,
+    'Behind pace': `Week ${wk}: you've made ${fmtUSD(actualY)} vs a plan of ${fmtUSD(planNow)}. That's fine and normal. Don't catch up by sizing up; keep taking only Desk setups.`
+  }[status];
+  $('#proPaceNote').textContent = msg;
+  // phase table
+  const yourRate = wNow >= 1 ? actualY / wNow : null;
+  const rows = PHASES.map(ph => {
+    const pr = phaseRate(plan, ph.n), sr = phaseRate(strong, ph.n);
+    const pt = ph.n === 1 ? plan.lockW : ph.n === 2 ? (plan.cashW && plan.lockW ? plan.cashW - plan.lockW : null) : null;
+    let you = '';
+    if (ph.n === S.phase && yourRate !== null) {
+      let eta = '';
+      if (yourRate > 0 && S.phase < 3) { const left = S.phase === 1 ? S.lockAt - S.peak : c.keep2 - S.bal; const d = new Date(Date.now() + Math.max(0, left) / yourRate * 7 * 864e5); eta = ' · done ~' + d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}); }
+      you = `${fmtUSD(yourRate)}/wk${eta}`;
+    } else if (ph.n < S.phase) you = 'Done';
+    return {ph, pr, sr, pt, you};
+  });
+  fillTable('#t-pace', rows, r => [[`${r.ph.n} · ${r.ph.name}` + (r.ph.n === S.phase ? '  ◀ you' : '')], [r.ph.done], [r.pr === null ? null : fmtUSD(r.pr) + '/wk', 'num'], [r.sr === null ? null : fmtUSD(r.sr) + '/wk', 'num'], [r.pt ? `~${r.pt} weeks` : (r.ph.n === 3 ? 'Ongoing' : null), 'num'], [r.you || null, 'num']]);
+  // chart
+  const sPlan = css('--accent'), sStrong = css('--info'), sFast = css('--bear'), sYou = css('--ink');
+  legend($('#lg-pace'), [['You', sYou], ['Plan pace (45% wins)', sPlan], ['Strong pace (50%)', sStrong], ['Speed limit', sFast]]);
+  const W = Math.max(300, el.clientWidth || 600), H = 260, pl = 64, pr = 16, pt = 22, pb = 30;
+  const ys = [...plan.pts, ...strong.pts].filter(p => p.x <= xMax).map(p => p.y).concat(S.pts.map(p => p.y), [2000]);
+  const yMax = Math.max(2500, ...ys) * 1.08, yMin = Math.min(0, ...S.pts.map(p => p.y)) * 1.1;
+  const X = x => pl + (x / xMax) * (W - pl - pr), Y = v => pt + (1 - (v - yMin) / (yMax - yMin)) * (H - pt - pb);
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%');
+  svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `Pace chart: ${status}. Profit made ${fmtUSD(actualY)} vs plan ${fmtUSD(planNow)} in week ${wk}.`);
+  const mk = (n, a, txt) => { const e = document.createElementNS(NS, n); Object.entries(a).forEach(([k, v]) => e.setAttribute(k, v)); if (txt !== undefined) e.textContent = txt; svg.append(e); return e; };
+  const cp = mk('clipPath', {id: 'paceclip'}); const cr = document.createElementNS(NS, 'rect'); [['x', pl], ['y', pt], ['width', W - pl - pr], ['height', H - pt - pb]].forEach(([k, v]) => cr.setAttribute(k, v)); cp.append(cr);
+  const step = yMax > 12000 ? 4000 : yMax > 6000 ? 2000 : 1000;
+  for (let v = 0; v <= yMax; v += step) { mk('line', {x1: pl, x2: W - pr, y1: Y(v), y2: Y(v), stroke: css('--line')}); mk('text', {x: pl - 6, y: Y(v), dy: '0.35em', 'text-anchor': 'end', 'font-size': 11, 'font-family': css('--mono'), fill: css('--muted')}, fmtUSD(v)); }
+  const xs = xMax > 24 ? 4 : 2;
+  for (let w = 0; w <= xMax; w += xs) mk('text', {x: X(w), y: H - 10, 'text-anchor': 'middle', 'font-size': 11, 'font-family': css('--mono'), fill: css('--muted')}, w === 0 ? 'Start' : 'Wk ' + w);
+  // phase 1 line
+  mk('line', {x1: pl, x2: W - pr, y1: Y(2000), y2: Y(2000), stroke: css('--muted'), 'stroke-dasharray': '2 4'});
+  mk('text', {x: W - pr - 4, y: Y(2000) - 6, 'text-anchor': 'end', 'font-size': 11, fill: css('--muted')}, 'Floor locks at +$2,000');
+  // too-fast zone
+  const fp = fast.pts.filter(p => p.x <= xMax);
+  const zone = fp.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ') + ` L ${X(fp[fp.length - 1].x)} ${Y(yMax * 3)} L ${X(0)} ${Y(yMax * 3)} Z`;
+  mk('path', {d: zone, fill: sFast, 'fill-opacity': 0.07, stroke: 'none', 'clip-path': 'url(#paceclip)'});
+  const line = (pts, col, w, dash) => { const q = pts.filter(p => p.x <= xMax); mk('path', {d: q.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' '), fill: 'none', stroke: col, 'stroke-width': w, 'stroke-dasharray': dash || '', 'stroke-linejoin': 'round', 'clip-path': 'url(#paceclip)'}); };
+  line(fast.pts, sFast, 1.25, '5 4'); line(strong.pts, sStrong, 1.5); line(plan.pts, sPlan, 2.5);
+  // plan phase gates
+  [[plan.lockW, 'Floor locks (plan)'], [plan.cashW, 'Cash flow (plan)']].forEach(([w, lab]) => { if (!w || w > xMax) return; mk('line', {x1: X(w), x2: X(w), y1: pt, y2: H - pb, stroke: sPlan, 'stroke-opacity': 0.5, 'stroke-dasharray': '3 3'}); mk('text', {x: X(w) + 4, y: pt + 12, 'font-size': 11, fill: css('--muted')}, lab); });
+  // today
+  if (wNow > 0 && wNow <= xMax) { mk('line', {x1: X(wNow), x2: X(wNow), y1: pt, y2: H - pb, stroke: css('--ink'), 'stroke-opacity': 0.25}); }
+  // you
+  if (S.pts.length > 1 || wNow > 0) {
+    const yp = [...S.pts]; if (wNow > yp[yp.length - 1].x) yp.push({x: wNow, y: actualY});
+    mk('path', {d: yp.filter(p => p.x <= xMax).map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' '), fill: 'none', stroke: sYou, 'stroke-width': 2.5, 'stroke-linejoin': 'round'});
+    const lx = Math.min(wNow, xMax);
+    mk('circle', {cx: X(lx), cy: Y(actualY), r: 4.5, fill: sYou});
+    mk('text', {x: X(lx) + (X(lx) > W * 0.7 ? -8 : 8), y: Y(actualY) - 9, 'text-anchor': X(lx) > W * 0.7 ? 'end' : 'start', 'font-size': 12, 'font-weight': 600, 'font-family': css('--mono'), fill: sYou}, 'You ' + fmtUSD(actualY));
+  }
+  el.append(svg);
+}
+
+$('#proForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const thr = parseFloat($('#p-thr').value);
+  const s = {...proCfg(), account: $('#p-acct').value, startDate: $('#p-startdate').value || '', threshold: isNaN(thr) ? null : thr, tpw: Math.max(1, Math.min(10, parseInt($('#p-tpw').value, 10) || 4)), updated: new Date().toISOString()};
+  if (!s.account) { $('#proStatus').textContent = 'Choose the PRO account first.'; return; }
+  try { await PRO_STORE.saveSettings(s); $('#proStatus').textContent = 'Saved.'; } catch (e) { $('#proStatus').textContent = 'Could not save. Try again.'; }
 });
 
 /* ---------- trade log: shared IndexedDB store with the Account Dashboard ---------- */
@@ -574,6 +906,7 @@ async function loadStore() {
   try { a = await idbGet('accounts'); m = await idbGet('meta'); } catch (e) {}
   if (!a) { try { const bk = JSON.parse(localStorage.getItem('ict-bk') || 'null'); if (bk) { a = bk.a; m = bk.m; } } catch (e) {} }
   ACCTS_RAW = Array.isArray(a) ? a : []; META = m || {}; BUNDLES = META.bundles || []; TAGS = META.tags || [];
+  await proLoad();
   project();
 }
 async function saveStore() {
@@ -612,7 +945,7 @@ async function connectDb() {
   window.addEventListener('focus', () => { if (IDB) loadStore(); });
 }
 
-function redraw() { drawStudy(); drawEquity(); }
+function redraw() { drawStudy(); drawEquity(); if ($('#proWrap') && !$('#proWrap').hidden) drawPace(); }
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 150); });
 try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw); } catch (e) {}
 new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
