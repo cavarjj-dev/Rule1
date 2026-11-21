@@ -248,7 +248,7 @@ details.card summary{cursor:pointer}
       <div id="c-equity" style="min-height:160px"></div>
     </div>
     <div class="grid" style="margin-top:14px">
-      <div class="card"><h3>By setup type</h3><p class="note">A-setup and standard trades follow the indicator; deviations are trades taken outside the plan.</p><div class="tbox"><table id="t-bysetup"><thead><tr><th>Setup</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h3>By setup type</h3><p class="note">Each trade is tagged with the playbook setup it was taken on. Standard is the indicator's 5M OTE entry; deviations are trades taken outside the plan.</p><div class="tbox"><table id="t-bysetup"><thead><tr><th>Setup</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
       <div class="card"><h3>Normal vs news days</h3><p class="note">Tagged automatically from the news calendar.</p><div class="tbox"><table id="t-bynews"><thead><tr><th>Day</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
     </div>
 
@@ -258,6 +258,7 @@ details.card summary{cursor:pointer}
         <div class="row">
           <label for="f-date">Date<input type="date" id="f-date" required></label>
           <label for="f-time">Entry time (ET)<input type="time" id="f-time"></label>
+          <label for="f-xtime">Exit time (ET)<input type="time" id="f-xtime"></label>
           <label for="f-acct">Account<select id="f-acct" required></select></label>
           <label for="f-sym">Contract<select id="f-sym"><option value="MNQ">MNQ ($2/pt)</option><option value="NQ">NQ ($20/pt)</option></select></label>
           <label for="f-side">Side<select id="f-side"><option>Long</option><option>Short</option></select></label>
@@ -271,7 +272,9 @@ details.card summary{cursor:pointer}
           <label for="f-pnl">Net P&amp;L ($)<input type="number" id="f-pnl" step="0.01" required></label>
         </div>
         <div class="row">
-          <label for="f-setup">Setup<select id="f-setup"><option>A-setup</option><option selected>Standard</option><option>Deviation</option></select></label>
+          <label for="f-setup">Setup<select id="f-setup" required><option value="" selected disabled>Choose the setup…</option><optgroup label="Playbook"><option value="A">A · London counter-side sweep</option><option value="B1">B1 · Midnight magnet</option><option value="B2">B2 · Sweep against the 4H, continuation</option><option value="B3">B3 · 4H trend resumes after a pullback</option><option value="B5">B5 · Open inside London</option></optgroup><optgroup label="Watch / context"><option value="C1">C1 · Asia counter-side sweep</option><option value="X1">X1 · Trend open, don't fade</option></optgroup><optgroup label="Other"><option value="Standard">Standard · indicator 5M OTE</option><option value="Deviation">Deviation · outside the plan</option></optgroup></select></label>
+          <label for="f-tf">Executed on<select id="f-tf"><option>1M</option><option selected>5M</option><option>15M</option><option>1H</option></select></label>
+          <label for="f-exitby">Exit<select id="f-exitby"><option>Take profit</option><option>Stop</option><option>Breakeven</option><option>Manual</option></select></label>
           <label for="f-plan">Followed the plan?<select id="f-plan"><option value="yes">Yes</option><option value="no">No</option></select></label>
           <label for="f-notes" style="grid-column:span 2">Notes<textarea id="f-notes" placeholder="What did you see? Why this trade?"></textarea></label>
         </div>
@@ -280,7 +283,7 @@ details.card summary{cursor:pointer}
     </div>
 
     <h2>Trade log</h2>
-    <div class="card"><div class="tbox"><table id="t-trades"><thead><tr><th>Date</th><th>Account</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Net</th><th>Setup</th><th>Plan</th><th>News</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><div class="tbox"><table id="t-trades"><thead><tr><th>Date</th><th>Entry → exit</th><th>Account</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Net</th><th>Setup</th><th>TF</th><th>Exit</th><th>Plan</th><th>News</th><th>Notes</th><th></th></tr></thead><tbody></tbody></table></div></div>
 
     <h2>Add an account</h2>
     <div class="card">
@@ -439,6 +442,10 @@ function renderSetups() {
 }
 
 /* ---------- accounts & trades (db) ---------- */
+const SETUP_ORDER = ['A', 'B1', 'B2', 'B3', 'B5', 'C1', 'X1', 'Standard', 'Deviation', 'Untagged'];
+const normSetup = v => v === 'A-setup' ? 'A' : (v || 'Untagged');
+function setupLabel(v) { const k = normSetup(v); const r = STUDY && STUDY.setups && (STUDY.setups.rules || []).find(x => x.code === k); return r ? k + ' · ' + r.name : k; }
+function held(a, b) { if (!a || !b) return ''; const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number); let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d < 0) d += 1440; return d >= 60 ? ` (${Math.floor(d / 60)}h ${d % 60}m)` : ` (${d}m)`; }
 let DB = null, ACCTS = [], TRADES = [], canWrite = true;
 const newsFor = d => NEWS_BY_DATE[d] || '';
 function acctName(id) { const a = ACCTS.find(x => x.id === id); return a ? a.name : 'Removed account'; }
@@ -490,14 +497,14 @@ function renderAccounts() {
     cards.append(c);
   });
   const group = (key, order) => order.map(k => { const ts = TRADES.filter(t => key(t) === k); const s = stats(ts); return {k, ...s}; }).filter(r => r.n > 0);
-  fillTable('#t-bysetup', group(t => t.setup, ['A-setup', 'Standard', 'Deviation', 'Untagged']), r => [[r.k], [r.n, 'num'], [r.win === null ? null : r.win + '%', 'num'], [fmtUSD(r.net), 'num ' + (r.net >= 0 ? 'pos' : 'neg')], [fmtUSD(r.avg), 'num']]);
+  fillTable('#t-bysetup', group(t => normSetup(t.setup), SETUP_ORDER), r => [[setupLabel(r.k)], [r.n, 'num'], [r.win === null ? null : r.win + '%', 'num'], [fmtUSD(r.net), 'num ' + (r.net >= 0 ? 'pos' : 'neg')], [fmtUSD(r.avg), 'num']]);
   fillTable('#t-bynews', group(t => newsFor(t.date) ? 'News day' : 'Normal day', ['Normal day', 'News day']), r => [[r.k], [r.n, 'num'], [r.win === null ? null : r.win + '%', 'num'], [fmtUSD(r.net), 'num ' + (r.net >= 0 ? 'pos' : 'neg')], [fmtUSD(r.avg), 'num']]);
   const sorted = [...TRADES].sort((x, y) => (y.date + (y.time || '')).localeCompare(x.date + (x.time || '')));
   const tb = $('#t-trades tbody'); tb.replaceChildren();
-  if (!sorted.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 13; td.className = 'muted'; td.textContent = 'No trades logged yet.'; tr.append(td); tb.append(tr); }
+  if (!sorted.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 16; td.className = 'muted'; td.textContent = 'No trades logged yet.'; tr.append(td); tb.append(tr); }
   sorted.forEach(t => {
     const tr = document.createElement('tr');
-    const cells = [[t.date + (t.time ? ' ' + t.time : '')], [acctName(t.account)], [t.side], [t.qty + ' ' + t.sym, 'num'], [t.entry, 'num'], [t.exit, 'num'], [t.stop, 'num'], [fmtUSD(t.pnl), 'num ' + (t.pnl >= 0 ? 'pos' : 'neg')], [t.setup], [t.plan === 'no' ? pill('Off plan', 'bear') : t.plan === 'yes' ? 'Yes' : ''], [newsFor(t.date) ? pill(newsFor(t.date), 'warn') : ''], [t.notes]];
+    const cells = [[t.date], [t.time ? t.time + (t.xtime ? ' → ' + t.xtime + held(t.time, t.xtime) : '') : '', 'mono'], [acctName(t.account)], [t.side], [t.qty + ' ' + t.sym, 'num'], [t.entry, 'num'], [t.exit, 'num'], [t.stop, 'num'], [fmtUSD(t.pnl), 'num ' + (t.pnl >= 0 ? 'pos' : 'neg')], [normSetup(t.setup)], [t.tf], [t.exitBy], [t.plan === 'no' ? pill('Off plan', 'bear') : t.plan === 'yes' ? 'Yes' : ''], [newsFor(t.date) ? pill(newsFor(t.date), 'warn') : ''], [t.notes]];
     cells.forEach(([v, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; if (v instanceof Node) td.append(v); else td.textContent = v === null || v === undefined || v === '' ? '—' : v; if (cls === undefined && typeof v === 'string' && v.length > 40) { td.style.whiteSpace = 'normal'; td.style.minWidth = '220px'; } tr.append(td); });
     const td = document.createElement('td');
     if (canWrite) {
@@ -553,6 +560,7 @@ $('#tradeForm').addEventListener('submit', async (ev) => {
   if (!a) { $('#formStatus').textContent = 'Add an account first, then log the trade.'; return; }
   const num = s => { const v = parseFloat($(s).value); return isNaN(v) ? null : v; };
   const pnl = num('#f-pnl');
+  if (!$('#f-setup').value) { $('#formStatus').textContent = 'Choose the setup you traded.'; return; }
   if (pnl === null) { $('#formStatus').textContent = 'Enter the net P&L, or both entry and exit prices so it fills in.'; return; }
   const date = $('#f-date').value, time = $('#f-time').value || '';
   const ts = new Date(date + 'T' + (time || '12:00') + ':00').getTime();
@@ -560,7 +568,7 @@ $('#tradeForm').addEventListener('submit', async (ev) => {
   META.nextTradeId = META.nextTradeId || 100;
   const t = {id: 't' + (META.nextTradeId++), win: pnl > 0, pnl: Math.round(pnl * 100) / 100, contracts: qty + ' ' + sym, ts, phase: '', tags: [],
     date, time, sym, side: $('#f-side').value, qty, entry: num('#f-entry'), exit: num('#f-exit'), stop: num('#f-stop'), fees: num('#f-fees'),
-    setup: $('#f-setup').value, plan: $('#f-plan').value, notes: $('#f-notes').value.trim()};
+    setup: $('#f-setup').value, xtime: $('#f-xtime').value || '', tf: $('#f-tf').value, exitBy: $('#f-exitby').value, plan: $('#f-plan').value, notes: $('#f-notes').value.trim()};
   a.trades = a.trades || []; a.trades.push(t);
   a.totalPnl = Math.round((a.totalPnl || 0) + t.pnl);
   if (date === nyDate(Date.now())) a.dailyPnl = Math.round((a.dailyPnl || 0) + t.pnl);
@@ -569,7 +577,7 @@ $('#tradeForm').addEventListener('submit', async (ev) => {
   try {
     await saveStore(); project();
     $('#formStatus').textContent = `Saved: ${t.side} ${qty} ${sym}, ${fmtUSD(t.pnl)}.`;
-    ['#f-entry', '#f-exit', '#f-stop', '#f-pnl', '#f-notes', '#f-time'].forEach(s => { $(s).value = ''; });
+    ['#f-entry', '#f-exit', '#f-stop', '#f-pnl', '#f-notes', '#f-time', '#f-xtime', '#f-setup'].forEach(s => { $(s).value = ''; });
   } catch (e) { a.trades.pop(); $('#formStatus').textContent = 'Could not save the trade in this browser. Try again.'; }
   finally { $('#saveTrade').disabled = false; }
 });
@@ -925,7 +933,7 @@ function project() {
   ACCTS_RAW.forEach(x => (x.trades || []).forEach(t => {
     TRADES.push({id: String(x.id) + ':' + t.id, rawId: t.id, account: String(x.id), date: t.date || (t.ts ? nyDate(t.ts) : ''), time: t.time || '',
       sym: t.sym || '', side: t.side || '', qty: t.qty || t.contracts || '', entry: t.entry ?? null, exit: t.exit ?? null, stop: t.stop ?? null,
-      pnl: typeof t.pnl === 'number' ? t.pnl : 0, setup: t.setup || 'Untagged', plan: t.plan || '', notes: t.notes || ''});
+      pnl: typeof t.pnl === 'number' ? t.pnl : 0, setup: t.setup || 'Untagged', xtime: t.xtime || '', tf: t.tf || '', exitBy: t.exitBy || '', plan: t.plan || '', notes: t.notes || ''});
   }));
   renderAccounts();
 }
