@@ -252,6 +252,21 @@ details.card summary{cursor:pointer}
       <div class="card"><h3>Normal vs news days</h3><p class="note">Tagged automatically from the news calendar.</p><div class="tbox"><table id="t-bynews"><thead><tr><th>Day</th><th class="num">Trades</th><th class="num">Win %</th><th class="num">Net</th><th class="num">Avg</th></tr></thead><tbody></tbody></table></div></div>
     </div>
 
+    <h2>Import from Tradovate</h2>
+    <div class="card" id="impCard">
+      <p class="note" style="max-width:75ch">In Tradovate, open the <b>Orders</b> tab and export it as CSV. Choose the file here: the page pairs the fills into trades, uses the real fill prices and stop distance, adds your fees, and skips trades you've already logged. Setup and notes stay blank, so tag each trade with <b>Edit</b> in the trade log afterward.</p>
+      <form id="impForm" onsubmit="return false"><div class="row">
+        <label for="i-file">Tradovate orders CSV<input type="file" id="i-file" accept=".csv,text/csv"></label>
+        <label for="i-acct">Into account<select id="i-acct"></select></label>
+        <label for="i-fee">Fee per MNQ round trip ($)<input type="number" id="i-fee" step="0.01" min="0" placeholder="from Tradovate Performance"></label>
+        <label for="i-feenq">Fee per NQ round trip ($)<input type="number" id="i-feenq" step="0.01" min="0" placeholder="optional"></label>
+        <label for="i-tz">Times in the file are<select id="i-tz"><option value="CT">Central (your computer)</option><option value="ET">Eastern</option></select></label>
+      </div></form>
+      <div class="status" id="i-status"></div>
+      <div class="tbox" id="i-preview" style="margin-top:8px"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><button class="btn" type="button" id="i-go" hidden>Import trades</button></div>
+    </div>
+
     <h2>Log a trade</h2>
     <div class="card">
       <form id="tradeForm">
@@ -278,7 +293,7 @@ details.card summary{cursor:pointer}
           <label for="f-plan">Followed the plan?<select id="f-plan"><option value="yes">Yes</option><option value="no">No</option></select></label>
           <label for="f-notes" style="grid-column:span 2">Notes<textarea id="f-notes" placeholder="What did you see? Why this trade?"></textarea></label>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" type="submit" id="saveTrade">Save trade</button><span class="status" id="formStatus"></span></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" type="submit" id="saveTrade">Save trade</button><button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel edit</button><span class="status" id="formStatus"></span></div>
       </form>
     </div>
 
@@ -513,11 +528,12 @@ function renderAccounts() {
         if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Confirm'; setTimeout(() => { del.dataset.armed = ''; del.textContent = 'Delete'; }, 3000); return; }
         del.disabled = true; try { await deleteTrade(t); } catch (e) { del.disabled = false; $('#formStatus').textContent = 'Could not delete that trade. Try again.'; }
       });
-      td.append(del);
+      td.append(editBtn(t), ' ', del);
     }
     tr.append(td); tb.append(tr);
   });
   drawEquity();
+  renderImportAccts();
   if (PRO_READY) renderPro();
 }
 function drawEquity() {
@@ -553,6 +569,167 @@ function autoPnl() {
 ['#f-entry', '#f-exit', '#f-qty', '#f-sym', '#f-side', '#f-fees'].forEach(s => $(s).addEventListener('input', autoPnl));
 $('#f-date').value = new Date().toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
 
+
+const TRADE_STORE = {
+  async addMany(acct, rows) {
+    const a = ACCTS_RAW.find(x => String(x.id) === acct); if (!a) throw new Error('account');
+    META.nextTradeId = META.nextTradeId || 100; a.trades = a.trades || [];
+    rows.forEach(r => {
+      const t = {...r, id: 't' + (META.nextTradeId++), win: r.pnl > 0, contracts: r.qty + ' ' + r.sym, ts: new Date(r.date + 'T' + r.time + ':00').getTime(), phase: '', tags: [], tf: ''};
+      a.trades.push(t); a.totalPnl = Math.round((a.totalPnl || 0) + t.pnl);
+      if (r.date === nyDate(Date.now())) a.dailyPnl = Math.round((a.dailyPnl || 0) + t.pnl);
+    });
+    await saveStore(); project();
+  }
+};
+
+/* ---------- Tradovate import + trade editing ---------- */
+const PV = {MNQ: 2, NQ: 20, MES: 5, ES: 50, M2K: 5, RTY: 50, MYM: 0.5, YM: 5};
+const symRoot = s => String(s || '').trim().replace(/[FGHJKMNQUVXZ]\d{1,2}$/, '');
+const q4 = v => Math.round(v * 4) / 4;
+function loadFees() { try { return JSON.parse(localStorage.getItem('nqdesk-fees') || '{}') || {}; } catch (e) { return {}; } }
+function saveFees(f) { try { localStorage.setItem('nqdesk-fees', JSON.stringify(f)); } catch (e) {} }
+function feeFor(root, qty) { const f = loadFees(); const per = root === 'NQ' ? f.NQ : root === 'MNQ' ? f.MNQ : null; return typeof per === 'number' ? Math.round(per * qty * 100) / 100 : null; }
+
+function parseCSV(text) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(f); f = ''; if (row.some(c => c !== '')) rows.push(row); row = []; }
+    else f += ch;
+  }
+  row.push(f); if (row.some(c => c !== '')) rows.push(row);
+  return rows;
+}
+// "2026-11-24 08:54:47" in the file's zone -> {date, time} in New York time
+function toNY(s, tz) {
+  const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) { const m2 = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),? (\d{1,2}):(\d{2})(?::(\d{2}))? ?(AM|PM)?/i); if (!m2) return null;
+    let h = +m2[4] % 12; if (/pm/i.test(m2[7] || '')) h += 12; if (!m2[7]) h = +m2[4];
+    return toNY(`${m2[3]}-${String(m2[1]).padStart(2, '0')}-${String(m2[2]).padStart(2, '0')} ${String(h).padStart(2, '0')}:${m2[5]}:${m2[6] || '00'}`, tz); }
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] + (tz === 'CT' ? 1 : 0), +m[5], +(m[6] || 0)));
+  const iso = d.toISOString();
+  return {date: iso.slice(0, 10), time: iso.slice(11, 16), key: iso};
+}
+// Pair filled orders into round-trip trades (per symbol, in time order).
+function tvTrades(text, tz) {
+  const rows = parseCSV(text.replace(/^﻿/, ''));
+  if (rows.length < 2) throw new Error('empty');
+  const head = rows.shift().map(h => h.trim().toLowerCase());
+  const col = (...names) => { for (const n of names) { const i = head.indexOf(n); if (i >= 0) return i; } return -1; };
+  const C = {sym: col('symbol', 'contract'), side: col('side', 'b/s'), type: col('type'), fq: col('filled qty', 'filledqty', 'filled'), px: col('avg fill price', 'avgprice', 'avg price'),
+    stop: col('stop price', 'stopprice'), status: col('status'), t: col('update time', 'timestamp', 'fill time'), id: col('order id', 'orderid')};
+  if (C.sym < 0 || C.side < 0 || C.px < 0 || C.t < 0) throw new Error('columns');
+  const recs = rows.map(r => ({sym: (r[C.sym] || '').trim(), side: /buy|^b$/i.test(r[C.side] || '') ? 1 : -1, type: C.type >= 0 ? r[C.type] || '' : '',
+    fq: C.fq >= 0 ? parseFloat(r[C.fq]) || 0 : 0, px: parseFloat(String(r[C.px] || '').replace(/,/g, '')), stop: C.stop >= 0 ? parseFloat(String(r[C.stop] || '').replace(/,/g, '')) : NaN,
+    status: C.status >= 0 ? (r[C.status] || '').trim() : 'Filled', when: toNY(r[C.t], tz), id: C.id >= 0 ? (r[C.id] || '').trim() : ''}))
+    .filter(r => r.sym && r.when);
+  const fills = recs.filter(r => /fill/i.test(r.status) && r.fq > 0 && !isNaN(r.px)).sort((a, b) => a.when.key.localeCompare(b.when.key) || a.id.localeCompare(b.id));
+  const out = [], open = {};
+  fills.forEach(f => {
+    let q = f.fq, cur = open[f.sym];
+    while (q > 0) {
+      if (!cur) { cur = open[f.sym] = {sym: f.sym, dir: f.side, pos: 0, inQ: 0, inV: 0, outQ: 0, outV: 0, open: f.when, firstId: f.id}; }
+      if (cur.pos === 0 || Math.sign(cur.pos) === f.side) { cur.inQ += q; cur.inV += q * f.px; cur.pos += f.side * q; q = 0; }
+      else {
+        const c = Math.min(q, Math.abs(cur.pos)); cur.outQ += c; cur.outV += c * f.px; cur.pos += f.side * c; q -= c;
+        if (cur.pos === 0) { cur.close = f.when; cur.exitType = f.type; out.push(cur); cur = open[f.sym] = null; }
+      }
+    }
+  });
+  const stillOpen = Object.values(open).filter(Boolean).length;
+  const trades = out.map(t => {
+    const root = symRoot(t.sym), pv = PV[root] || 2, entry = t.inV / t.inQ, exit = t.outV / t.outQ, qty = t.inQ;
+    const stops = recs.filter(r => r.sym === t.sym && /stop/i.test(r.type) && r.side === -t.dir && !isNaN(r.stop) && r.when.key >= t.open.key && r.when.key <= t.close.key.slice(0, 16) + ':59')
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const stopPts = stops.length ? q4(Math.abs(entry - stops[0].stop)) : null;
+    const exitBy = Math.abs(exit - entry) <= 1 ? 'Breakeven' : /stop/i.test(t.exitType || '') ? 'Stop' : /limit|take/i.test(t.exitType || '') ? 'Take profit' : 'Manual';
+    const gross = Math.round((exit - entry) * t.dir * qty * pv * 100) / 100;
+    return {date: t.open.date, time: t.open.time, xtime: t.close.time, sym: root, side: t.dir === 1 ? 'Long' : 'Short', qty,
+      entry: Math.round(entry * 100) / 100, exit: Math.round(exit * 100) / 100, stop: stopPts, exitBy, gross, src: 'tv:' + (t.firstId || t.open.key + t.sym)};
+  });
+  return {trades, stillOpen};
+}
+
+let IMPORT_ROWS = [];
+const usd2 = v => (v < 0 ? '−$' : '$') + Math.abs(v).toFixed(2);
+function isDup(acct, t) {
+  return TRADES.some(x => x.account === acct && ((x.src && x.src === t.src) || (x.date === t.date && (x.time || '').slice(0, 5) === t.time && Number(x.entry) === t.entry && Number(x.exit) === t.exit && Number(x.qty) === t.qty)));
+}
+function renderImportAccts() {
+  const sel = $('#i-acct'); if (!sel) return; const keep = sel.value;
+  sel.replaceChildren(...ACCTS.map(a => new Option(a.name, a.id)));
+  const pro = typeof proCfg === 'function' ? proCfg().account : '';
+  sel.value = sel.dataset.user && ACCTS.some(a => a.id === keep) ? keep : ACCTS.some(a => a.id === pro) ? pro : ACCTS.some(a => a.id === keep) ? keep : (ACCTS[0] ? ACCTS[0].id : '');
+  const f = loadFees(); if (document.activeElement !== $('#i-fee')) $('#i-fee').value = typeof f.MNQ === 'number' ? f.MNQ : ''; if (document.activeElement !== $('#i-feenq')) $('#i-feenq').value = typeof f.NQ === 'number' ? f.NQ : '';
+  if (f.tz) $('#i-tz').value = f.tz;
+}
+async function previewImport() {
+  const file = $('#i-file').files[0], st = $('#i-status'), box = $('#i-preview');
+  if (!file) { st.textContent = ''; box.replaceChildren(); $('#i-go').hidden = true; IMPORT_ROWS = []; return; }
+  const fees = loadFees(); const fm = parseFloat($('#i-fee').value), fn = parseFloat($('#i-feenq').value);
+  fees.MNQ = isNaN(fm) ? undefined : fm; fees.NQ = isNaN(fn) ? undefined : fn; fees.tz = $('#i-tz').value; saveFees(fees);
+  let res;
+  try { res = tvTrades(await file.text(), $('#i-tz').value); }
+  catch (e) { box.replaceChildren(); $('#i-go').hidden = true; IMPORT_ROWS = []; st.textContent = e.message === 'columns' ? "That file doesn't look like a Tradovate Orders export (no Symbol, Side, Avg Fill Price or Update Time columns)." : 'Could not read that file. Export the Orders tab again as CSV.'; return; }
+  const acct = $('#i-acct').value;
+  IMPORT_ROWS = res.trades.map(t => { const fee = feeFor(t.sym, t.qty); return {...t, fees: fee, pnl: Math.round((t.gross - (fee || 0)) * 100) / 100, dup: isDup(acct, t)}; });
+  const fresh = IMPORT_ROWS.filter(r => !r.dup);
+  const noFee = fresh.some(r => r.fees === null);
+  st.textContent = `${IMPORT_ROWS.length} trade${IMPORT_ROWS.length === 1 ? '' : 's'} found · ${fresh.length} new` + (IMPORT_ROWS.length - fresh.length ? ` · ${IMPORT_ROWS.length - fresh.length} already logged` : '') + (res.stillOpen ? ` · ${res.stillOpen} position still open (left out)` : '') + (noFee ? ' · enter your fee above so net P&L is exact' : '');
+  box.replaceChildren(); $('#i-go').hidden = true;
+  if (!IMPORT_ROWS.length) return;
+  const tbl = document.createElement('table'); tbl.innerHTML = '<thead><tr><th>Date</th><th>Time ET</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop pts</th><th class="num">Gross</th><th class="num">Fees</th><th class="num">Net</th><th></th></tr></thead>';
+  const tb = document.createElement('tbody'); tbl.append(tb);
+  IMPORT_ROWS.forEach(r => { const tr = document.createElement('tr'); if (r.dup) tr.style.opacity = '.5';
+    [[r.date], [r.time + ' → ' + r.xtime, 'mono'], [r.side], [r.qty + ' ' + r.sym, 'num'], [r.entry, 'num'], [r.exit, 'num'], [r.stop === null ? '—' : r.stop, 'num'], [usd2(r.gross), 'num'], [r.fees === null ? '—' : usd2(r.fees), 'num'], [usd2(r.pnl), 'num ' + (r.pnl >= 0 ? 'pos' : 'neg')], [r.dup ? 'Already logged' : 'New']]
+      .forEach(([v, cls]) => { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = v; tr.append(td); }); tb.append(tr); });
+  box.append(tbl);
+  if (fresh.length && canWrite) { $('#i-go').hidden = false; $('#i-go').textContent = `Import ${fresh.length} trade${fresh.length === 1 ? '' : 's'}`; }
+}
+$('#i-acct').addEventListener('change', () => { $('#i-acct').dataset.user = '1'; });
+['#i-file', '#i-tz', '#i-acct'].forEach(s => $(s).addEventListener('change', previewImport));
+['#i-fee', '#i-feenq'].forEach(s => $(s).addEventListener('change', previewImport));
+$('#i-go').addEventListener('click', async () => {
+  const acct = $('#i-acct').value, rows = IMPORT_ROWS.filter(r => !r.dup && !isDup(acct, r));
+  if (!rows.length || !acct) return;
+  $('#i-go').disabled = true; $('#i-status').textContent = 'Importing…';
+  try {
+    await TRADE_STORE.addMany(acct, rows.map(r => ({date: r.date, time: r.time, xtime: r.xtime, sym: r.sym, side: r.side, qty: r.qty, entry: r.entry, exit: r.exit, stop: r.stop, fees: r.fees, pnl: r.pnl,
+      exitBy: r.exitBy, setup: '', plan: '', notes: '', src: r.src})));
+    $('#i-status').textContent = `Imported ${rows.length} trade${rows.length === 1 ? '' : 's'}. Use Edit in the trade log to add the setup and notes.`;
+    $('#i-preview').replaceChildren(); $('#i-go').hidden = true; $('#i-file').value = ''; IMPORT_ROWS = [];
+  } catch (e) { $('#i-status').textContent = 'Could not save the imported trades. Try again.'; }
+  finally { $('#i-go').disabled = false; }
+});
+
+/* editing an existing trade reuses the Log a trade form */
+let EDITING = null;
+const setVal = (s, v) => { const el = $(s); if (el) el.value = v === null || v === undefined ? '' : v; };
+function startEdit(t) {
+  EDITING = t;
+  setVal('#f-date', t.date); setVal('#f-time', (t.time || '').slice(0, 5)); setVal('#f-xtime', (t.xtime || '').slice(0, 5)); setVal('#f-acct', t.account);
+  setVal('#f-sym', t.sym === 'NQ' ? 'NQ' : 'MNQ'); setVal('#f-side', t.side || 'Long'); setVal('#f-qty', parseInt(t.qty, 10) || 1);
+  setVal('#f-entry', t.entry); setVal('#f-exit', t.exit); setVal('#f-stop', t.stop); setVal('#f-fees', t.fees); setVal('#f-pnl', t.pnl);
+  const ss = $('#f-setup'); if (ss) { ss.value = t.setup || ''; if (ss.value !== (t.setup || '') && typeof normSetup === 'function') ss.value = normSetup(t.setup); }
+  setVal('#f-tf', t.tf || ''); setVal('#f-exitby', t.exitBy || ''); setVal('#f-plan', t.plan || 'yes'); setVal('#f-notes', t.notes || '');
+  ['#f-tf', '#f-exitby', '#f-plan'].forEach(s => { const el = $(s); if (el && el.selectedIndex < 0) { const d = [...el.options].findIndex(o => o.defaultSelected); el.selectedIndex = d >= 0 ? d : 0; } });
+  $('#saveTrade').textContent = 'Update trade'; $('#cancelEdit').hidden = false;
+  $('#formStatus').textContent = `Editing the ${t.date} ${t.side || ''} trade. Change what you need and press Update trade.`;
+  $('#tradeForm').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+function endEdit() { EDITING = null; $('#saveTrade').textContent = 'Save trade'; $('#cancelEdit').hidden = true; }
+function editBtn(t) {
+  const b = document.createElement('button'); b.className = 'btn ghost small'; b.type = 'button'; b.textContent = t.setup && t.setup !== 'Untagged' ? 'Edit' : 'Edit · tag';
+  b.addEventListener('click', () => startEdit(t)); return b;
+}
+// when the fee per contract is known, the Fees field follows the contract count
+['#f-qty', '#f-sym'].forEach(s => $(s).addEventListener('input', () => { const f = feeFor($('#f-sym').value, parseInt($('#f-qty').value, 10) || 0); if (f !== null) { $('#f-fees').value = f; if (typeof autoPnl === 'function') autoPnl(); } }));
+
+$('#cancelEdit').addEventListener('click', () => { endEdit(); ['#f-entry', '#f-exit', '#f-stop', '#f-pnl', '#f-notes', '#f-time'].forEach(s => setVal(s, '')); setVal('#f-xtime', ''); $('#formStatus').textContent = ''; });
 $('#tradeForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   if (!IDB) { $('#formStatus').textContent = 'This browser blocked local storage, so trades cannot be saved here.'; return; }
@@ -569,14 +746,25 @@ $('#tradeForm').addEventListener('submit', async (ev) => {
   const t = {id: 't' + (META.nextTradeId++), win: pnl > 0, pnl: Math.round(pnl * 100) / 100, contracts: qty + ' ' + sym, ts, phase: '', tags: [],
     date, time, sym, side: $('#f-side').value, qty, entry: num('#f-entry'), exit: num('#f-exit'), stop: num('#f-stop'), fees: num('#f-fees'),
     setup: $('#f-setup').value, xtime: $('#f-xtime').value || '', tf: $('#f-tf').value, exitBy: $('#f-exitby').value, plan: $('#f-plan').value, notes: $('#f-notes').value.trim()};
+  const wasEdit = !!EDITING;
+  if (wasEdit) {
+    const oa = ACCTS_RAW.find(x => String(x.id) === EDITING.account);
+    const i = oa && oa.trades ? oa.trades.findIndex(x => x.id === EDITING.rawId) : -1;
+    if (i >= 0) {
+      const [g] = oa.trades.splice(i, 1);
+      t.id = g.id; t.tags = g.tags || []; t.phase = g.phase || ''; if (g.src) t.src = g.src;
+      oa.totalPnl = Math.round((oa.totalPnl || 0) - (g.pnl || 0));
+      if (g.ts && nyDate(g.ts) === nyDate(Date.now())) oa.dailyPnl = Math.round((oa.dailyPnl || 0) - (g.pnl || 0));
+    }
+  }
   a.trades = a.trades || []; a.trades.push(t);
   a.totalPnl = Math.round((a.totalPnl || 0) + t.pnl);
   if (date === nyDate(Date.now())) a.dailyPnl = Math.round((a.dailyPnl || 0) + t.pnl);
-  a.consecutiveLosses = t.win ? 0 : (a.consecutiveLosses || 0) + 1;
+  if (!wasEdit) a.consecutiveLosses = t.win ? 0 : (a.consecutiveLosses || 0) + 1;
   $('#saveTrade').disabled = true;
   try {
     await saveStore(); project();
-    $('#formStatus').textContent = `Saved: ${t.side} ${qty} ${sym}, ${fmtUSD(t.pnl)}.`;
+    $('#formStatus').textContent = `${wasEdit ? 'Updated' : 'Saved'}: ${t.side} ${qty} ${sym}, ${fmtUSD(t.pnl)}.`; endEdit();
     ['#f-entry', '#f-exit', '#f-stop', '#f-pnl', '#f-notes', '#f-time', '#f-xtime', '#f-setup'].forEach(s => { $(s).value = ''; });
   } catch (e) { a.trades.pop(); $('#formStatus').textContent = 'Could not save the trade in this browser. Try again.'; }
   finally { $('#saveTrade').disabled = false; }
@@ -716,6 +904,7 @@ const PHASES = [
 ];
 
 function renderPro() {
+  if (typeof renderImportAccts === 'function' && $('#i-acct')) renderImportAccts();
   const wrap = $('#proWrap'); if (!wrap) return;
   wrap.hidden = false;
   const c = proCfg(), sel = $('#p-acct');
@@ -932,7 +1121,7 @@ function project() {
   TRADES = [];
   ACCTS_RAW.forEach(x => (x.trades || []).forEach(t => {
     TRADES.push({id: String(x.id) + ':' + t.id, rawId: t.id, account: String(x.id), date: t.date || (t.ts ? nyDate(t.ts) : ''), time: t.time || '',
-      sym: t.sym || '', side: t.side || '', qty: t.qty || t.contracts || '', entry: t.entry ?? null, exit: t.exit ?? null, stop: t.stop ?? null,
+      sym: t.sym || '', side: t.side || '', qty: t.qty || t.contracts || '', entry: t.entry ?? null, exit: t.exit ?? null, stop: t.stop ?? null, fees: t.fees ?? null, src: t.src || '',
       pnl: typeof t.pnl === 'number' ? t.pnl : 0, setup: t.setup || 'Untagged', xtime: t.xtime || '', tf: t.tf || '', exitBy: t.exitBy || '', plan: t.plan || '', notes: t.notes || ''});
   }));
   renderAccounts();
